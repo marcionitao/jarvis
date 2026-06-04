@@ -42,6 +42,7 @@ Antes da arquitetura, há três pontos da stack indicada que provavelmente não 
 
 | # | Item | Risco | Alternativa recomendada |
 |---|------|-------|--------------------------|
+
 | 1 | **Prisma em React Native** | Prisma é uma ORM server-side (Node.js). Em React Native não tem suporte oficial. Tentativas antigas com `prisma-bridge` estão abandonadas e quebram com o novo RN. | **Drizzle ORM** sobre `expo-sqlite` (type-safe, leve, oficial em RN). Manter **Prisma apenas no futuro backend cloud** (fase de sincronização). |
 | 2 | **shadcn/ui em React Native** | shadcn/ui é web-only. Não existe port oficial. | **react-native-reusables** (port fiel de shadcn para RN sobre NativeWind) ou **gluestack-ui** (mais maduro, baseado em temas). |
 | 3 | **NativeWind v5** | Está em pré-release. Pode ter fricções com Expo SDK 55. | Usar **NativeWind v4** (estável) ou **Uniwind** (mais moderno). |
@@ -65,7 +66,7 @@ Antes da arquitetura, há três pontos da stack indicada que provavelmente não 
 
 ### 3.2 Camadas
 
-```
+```bash
 ┌─────────────────────────────────────────────────────────┐
 │  UI Layer                                               │
 │  Expo Router (src/app) + Componentes (shadcn-style)     │
@@ -94,7 +95,7 @@ Antes da arquitetura, há três pontos da stack indicada que provavelmente não 
 
 ### 3.3 Estrutura de pastas
 
-```
+```bash
 src/
 ├── styles/                       # Design system (fonte de verdade)
 │   ├── Colors.ts                 # Paleta (light + dark) e tokens
@@ -195,6 +196,7 @@ A paleta existente é reorganizada para suportar **tema light + dark** a partir 
 **Derivação para light/dark (proposta de alto nível):**
 
 | Token | Light | Dark | Fonte |
+
 |-------|-------|------|-------|
 | primary | `#dc4c3e` | `#dc4c3e` | identidade de marca |
 | background | `#fff` (existente) | `#1a1a1a` (a afinar) | derivado |
@@ -213,6 +215,7 @@ A paleta existente é reorganizada para suportar **tema light + dark** a partir 
 **Política de uso (MVP):**
 
 | Ficheiro | Uso | Nota |
+
 |----------|-----|------|
 | `icon.png` | Ícone principal da app | OK (106 KB) |
 | `adaptive-icon.png` | Android adaptive icon | OK (17 KB) |
@@ -228,6 +231,7 @@ A paleta existente é reorganizada para suportar **tema light + dark** a partir 
 
 | Fonte | Uso | Pesos |
 |-------|-----|-------|
+
 | **Inter** (a adicionar) | Fonte principal — títulos, body, labels | Regular, Medium, Semibold, Bold |
 | **SpaceMono-Regular** (existente) | Decorativo/pontual — timestamps, IDs, números | Regular |
 
@@ -241,7 +245,7 @@ Carregamento via `expo-font` com `useFonts` no root `_layout.tsx`. Splash screen
 
 **Decisão: Opção B** — 5 tabs sem hub "Mais". Acesso rápido às vistas core (Hoje, Agenda, Pesquisar, Projetos); definições, etiquetas, próximos e estatísticas ficam acessíveis via stack/header (a partir do tab respetivo ou do header da tab "Hoje").
 
-```
+```bash
 ┌──────────────────────────────────────────────────┐
 │                                                  │
 │                 (conteúdo)                       │
@@ -254,6 +258,7 @@ Carregamento via `expo-font` com `useFonts` no root `_layout.tsx`. Splash screen
 ```
 
 | # | Tab | Conteúdo principal |
+
 |---|-----|---------------------|
 | 1 | **Hoje** | Tarefas com `dueDate = hoje` + atrasadas + Inbox. Header com selector de filtro (Inbox / Projeto / Etiqueta). |
 | 2 | **Agenda** | Vista mensal (react-native-calendars). Dots nas datas com tarefas. |
@@ -291,7 +296,7 @@ Carregamento via `expo-font` com `useFonts` no root `_layout.tsx`. Splash screen
 
 O componente `<FAB>` é desenhado como contentor de modos, para que a introdução do Assistente IA no futuro não exija refactor de layout:
 
-```
+```typescript
 <FAB mode="quickAdd" | "assistant" onPress onLongPress>
   <Icon />
 </FAB>
@@ -304,7 +309,7 @@ O componente `<FAB>` é desenhado como contentor de modos, para que a introduç�
 
 O tab "central" no `@react-navigation/bottom-tabs` não é uma rota real. É um `tabBarButton` custom que renderiza o `<FAB>` e cujo `listeners` consome o evento sem navegar. Padrão conhecido:
 
-```
+```typescript
 tabBarButton: (props) => <FAB {...props} />,
 listeners: () => ({
   tabPress: (e) => {
@@ -320,7 +325,7 @@ A screen do tab central devolve `null` (não renderiza conteúdo).
 
 ## 5. Fluxo de navegação
 
-```
+```bash
                          ┌─────────────┐
                          │  Onboarding │  (primeira vez)
                          └──────┬──────┘
@@ -372,7 +377,7 @@ A screen do tab central devolve `null` (não renderiza conteúdo).
 
 #### users
 
-```
+```json
 users {
   id: ULID (PK)
   name: string
@@ -386,7 +391,7 @@ Nota: num device local, 1 user = 1 utilizador local. O `remoteId` será adiciona
 
 #### projects
 
-```
+```json
 projects {
   id: ULID (PK)
   name: string
@@ -404,7 +409,7 @@ projects {
 
 #### tasks
 
-```
+```json
 tasks {
   id: ULID (PK)
   title: string
@@ -427,7 +432,7 @@ tasks {
 
 #### labels (etiquetas)
 
-```
+```json
 labels {
   id: ULID (PK)
   name: string
@@ -438,7 +443,7 @@ labels {
 
 #### task_labels (M:N)
 
-```
+```json
 task_labels {
   taskId: ULID
   labelId: ULID
@@ -447,7 +452,7 @@ task_labels {
 
 #### reminders
 
-```
+```json
 reminders {
   id: ULID (PK)
   taskId: ULID
@@ -461,7 +466,7 @@ reminders {
 
 #### outbox (mutações pendentes para sync)
 
-```
+```json
 outbox {
   id: ULID (PK)
   entity: 'task' | 'project' | 'label' | 'reminder'
@@ -492,6 +497,7 @@ outbox {
 ## 7. Stack final proposta
 
 | Camada | Escolha |
+
 |--------|---------|
 | Framework | **Expo SDK 55** + React 19 + RN 0.83 |
 | Linguagem | **TypeScript** (strict mode) |
@@ -522,6 +528,7 @@ outbox {
 ### 8.1 Resumo de decisões
 
 | # | Decisão | Resposta | Implicação na arquitetura |
+
 |---|---------|----------|----------------------------|
 | 1 | ORM no mobile | **Drizzle** (substitui Prisma) | Prisma permanece como opção para o futuro backend cloud; mobile usa Drizzle + `expo-sqlite`. |
 | 2 | UI Kit estilo shadcn | **react-native-reusables** | Componentes em `src/components/ui/` seguem a API do reusables (Button, Input, Dialog, Sheet, etc.). |
@@ -557,6 +564,7 @@ Justificação:
 ## 9. Riscos identificados
 
 | Risco | Impacto | Mitigação |
+
 |-------|---------|-----------|
 | ~~Prisma em RN~~ | Resolvido | Drizzle adotado (ver secção 8.1) |
 | ~~shadcn sem port~~ | Resolvido | react-native-reusables adotado (ver secção 8.1) |
@@ -583,6 +591,7 @@ Validar a arquitetura de ponta a ponta com uma **única feature end-to-end**: o 
 ### 10.2 Etapas
 
 | # | Etapa | Entregáveis | Critério de validação |
+
 |---|-------|-------------|------------------------|
 | 1.1 | **Setup de packages** | Instalação: `nativewind`, `drizzle-orm`, `drizzle-kit`, `expo-sqlite`, `expo-notifications`, `react-hook-form`, `zod`, `@hookform/resolvers`, `@shopify/flash-list`, `react-native-calendars`, `vitest`, `@testing-library/react-native`, `react-native-reusables`. Configuração de `tailwind.config.js`, `metro.config.js`, `babel.config.js` para NativeWind v4. | `npm run lint` + `npm run android` arrancam sem erros. |
 | 1.2 | **Providers e UI base** | `_layout.tsx` raiz com providers: `DBProvider`, `ThemeProvider`, `I18nProvider`, `NotificationsProvider`. Componentes em `src/components/ui/`: `Button`, `Input`, `Text`, `Card`, `Dialog`, `Sheet`, `Chip` (via reusables). Helpers em `src/lib/`: `cn()`, formatadores. | Ecrã de preview renderiza todos os componentes base. Tema auto + manual funciona. |
@@ -634,6 +643,7 @@ Esta secção define como a paleta em `src/styles/Colors.ts` é exposta aos comp
 ### 11.2 Mapeamento Colors → tokens (light + dark)
 
 | Token semântico | Light (de Colors.ts) | Dark (proposto) | Uso |
+
 |------------------|----------------------|------------------|-----|
 | `primary` | `Colors.primary` (`#dc4c3e`) | igual | CTAs, FAB, acções primárias |
 | `background` | `Colors.background` (`#fff`) | `#1a1a1a` (a afinar) | fundo da app |
@@ -648,6 +658,7 @@ Esta secção define como a paleta em `src/styles/Colors.ts` é exposta aos comp
 ### 11.3 Tokens de data (`DATE_COLORS`)
 
 | Token | Cor | Uso |
+
 |-------|-----|-----|
 | `date-today` | `#2f9d23` | badge "Hoje" na lista |
 | `date-tomorrow` | `#9d6023` | badge "Amanhã" |
@@ -659,6 +670,7 @@ Esta secção define como a paleta em `src/styles/Colors.ts` é exposta aos comp
 Paleta de 9 cores seleccionáveis pelo utilizador ao criar/editar projeto. Cada cor é exposta como `project-1` ... `project-9` no NativeWind.
 
 | # | Token | Cor |
+
 |---|-------|-----|
 | 1 | `project-1` | `#0079bf` (azul) |
 | 2 | `project-2` | `#d29034` (laranja) |
@@ -675,6 +687,7 @@ Paleta de 9 cores seleccionáveis pelo utilizador ao criar/editar projeto. Cada 
 ### 11.5 Prioridades (badge/chip)
 
 | Prioridade | Cor proposta | Nota |
+
 |------------|--------------|------|
 | `p1` (alta) | `Colors.primary` (`#dc4c3e`) | vermelho, máxima urgência |
 | `p2` | `Colors.secondary` (`#D88E2E`) | laranja |
