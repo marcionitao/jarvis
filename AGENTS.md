@@ -91,6 +91,7 @@ O fluxo obrigatório é:
 3. Rode `npm run lint`
 4. Teste no emulador (`npm run android` ou `npm run ios`)
 5. Commit claro e faça PR
+6. Se terminou uma etapa do plano de trabalho (ver `session-state.md`), actualize o `session-state.md` proactivamente — registe etapa concluída, ficheiros criados/modificados, e a próxima etapa pendente. Este ficheiro é a âncora de continuidade entre sessões.
 
 ---
 
@@ -112,6 +113,11 @@ O fluxo obrigatório é:
 - Pergunte **SEMPRE** antes de alterar qualquer configuração ou ficheiro do projeto
 - Ao criar novas telas: use o padrão do Expo Router (`src/app/nova-tela.tsx`)
 - Mantenha o UI moderno e intuitivo
+
+### Gestão de contexto entre janelas
+
+- Se o contexto da conversa ultrapassar **~70%** de uso (tokens), lembrar o utilizador de fazer snapshot do estado em `session-state.md` antes de abrir nova janela.
+- Ao retomar numa nova janela, o agente deve ler `AGENTS.md`, `analise-do-produto.md` e `session-state.md` antes de agir.
 
 ---
 
