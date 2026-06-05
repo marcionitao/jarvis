@@ -122,8 +122,9 @@ jarvis/
 │   └── images/                    # (intactos — política de remoção adiada)
 └── src/
     ├── app/
-    │   ├── _layout.tsx            # Providers + useFonts + SplashScreen + Stack temático
-    │   └── index.tsx              # Redireciona para PreviewScreen (temporário)
+    │   ├── _layout.tsx            # Providers + useFonts + SplashScreen + Stack temático + Stack.Screen quick-add (modal)
+    │   ├── index.tsx              # Tela "Hoje" (substitui PreviewScreen — etapa 1.6)
+    │   └── quick-add.tsx          # Modal Quick Add (presentation: 'modal') — etapa 1.6
     ├── state/
     │   ├── theme.store.tsx        # ThemeProvider (light/dark/system + AsyncStorage)
     │   ├── i18n.context.tsx       # I18nProvider (pt/en + AsyncStorage)
@@ -138,7 +139,9 @@ jarvis/
     │   └── reusables-adapter.ts   # Adaptador shadcn (background/foreground/primary/...)
     ├── components/
     │   ├── ui/                    # text, button, card, input, chip, icon
-    │   └── preview/index.tsx      # Ecrã de preview (temporário — substitui index)
+    │   ├── tasks/                 # ← etapa 1.6
+    │   │   └── TaskRow.tsx        # Linha de tarefa (BouncyCheckbox + título + chips)
+    │   └── preview/index.tsx      # Ecrã de preview (candidato a remoção — substituído por index.tsx em 1.6)
     ├── lib/
     │   ├── cn.ts                  # clsx + tailwind-merge
     │   └── format/
@@ -172,9 +175,14 @@ jarvis/
     │   ├── use-task-mutations.ts  # useCreateTask, useUpdateTask, useDeleteTask, useToggleComplete
     │   ├── use-projects.ts        # useProjects, useProject, useCreateProject, ...
     │   ├── use-labels.ts          # useLabels, useCreateLabel, ...
+    │   ├── use-quick-add.ts       # ← etapa 1.6 — mutation encadeada (parse → project → label → task)
     │   ├── index.ts               # Re-exports
     │   └── *.test.ts(x)           # 3 ficheiros de teste, 24 testes
-    ├── schemas/                   # (Vazio — etapa 1.6)
+    ├── services/                  # ← etapa 1.6
+    │   ├── quick-capture.service.ts    # Parser regex (!p1 #proj @label hoje/amanhã)
+    │   └── quick-capture.service.test.ts  # 7 testes (lógica pura)
+    ├── schemas/                   # ← etapa 1.6
+    │   └── task.schema.ts         # Zod quickAddParsedSchema (validação defensiva)
     └── types/                     # (Vazio — expandir quando necessário)
 ```
 
@@ -189,8 +197,8 @@ jarvis/
 | 1.3 | Schema DB + migrações | **Concluída** | tsc OK, eslint OK, migration gerada |
 | 1.4 | Repositórios + testes | **Concluída** | tsc OK, eslint OK, 35/35 testes |
 | 1.5 | Hooks de dados | **Concluída** | tsc OK, eslint OK, 59/59 testes |
-| 1.6 | Quick Add (POC) | **Pendente** ← próxima | — |
-| 1.7 | Bottom Tabs + FAB | Pendente | — |
+| 1.6 | Quick Add (POC) | **Concluída** | tsc OK, eslint OK, 66/66 testes |
+| 1.7 | Bottom Tabs + FAB | **Pendente** ← próxima | — |
 | 1.8 | Gate Go/No-Go | Pendente | — |
 
 ---
@@ -200,7 +208,7 @@ jarvis/
 ```bash
 npx tsc --noEmit        # typecheck (sem output = OK)
 npx eslint .            # lint (exit 0 = OK)
-npm test                # vitest (4 testes passam)
+npm test                # vitest (66 testes passam — 59 anteriores + 7 do parser Quick Add)
 npm run db:generate     # gerar migração Drizzle (a usar na 1.3)
 npm run db:migrate      # aplicar migração (a usar na 1.3)
 npm run android         # dev build + emulador Android (requer SDK)
@@ -230,6 +238,14 @@ npm run android         # dev build + emulador Android (requer SDK)
 | `@testing-library/react-native` falha com "Unexpected token 'typeof'" | Usar `react-dom/client` + `createRoot` directamente para testes de hooks |
 | `react-test-renderer@19.x` peer dep mismatch | Instalar com `--legacy-peer-deps` |
 | `react-hooks/refs` e `react-hooks/set-state-in-effect` (React 19) demasiado estritos | Desactivar em `eslint.config.js` (mantém `purity` desactivado também) |
+| `\b` no fim de palavra Unicode (ex: "amanhã" no fim) — bug V8/Node com `u` flag | Substituir `\b` por lookarounds: `/(?:^\|\W)(amanh[ãa]\|tomorrow)(?=\W\|$)/iu` |
+| `router.push('/nova-rota')` falha TS em SDK 55 (typed routes não conhece a rota) | Cast com `as never` ou activar `experimental.typedRoutes: true` em `app.json` (config não-trivial) |
+| `Cannot find module 'babel-preset-expo'` em runtime (hoisted em `expo/node_modules/`, não em root) | Adicionar `babel-preset-expo` como devDep explícita em `package.json` |
+| `nativewind/babel` v4.2.4 → `react-native-css-interop` v0.2.4 — exporta função, não plugin object. Babel 7.29+ valida e rejeita `plugins: [require('nativewind/babel')]` com `.plugins is not a valid Plugin property` | Em `babel.config.js`: `plugins: [...require('nativewind/babel')().plugins]`. Nota: `react-native-worklets/plugin` já vem incluído na lista, não duplicar. **CORRECÇÃO POSTERIOR:** a doc oficial usa `nativewind/babel` como **PRESET**, não plugin. Spread em `plugins` quebra a ordem de aplicação (jsx-transform com `importSource: 'react-native-css-interop'` conflita com `jsxImportSource: 'nativewind'` do babel-preset-expo). Usar: `presets: [['babel-preset-expo', { jsxImportSource: 'nativewind' }], 'nativewind/babel']`. |
+| Metro worker **não invoca** `babelTransformerPath` customizado para extensões não-padrão (ex: `.sql`). Resultado: `Unable to resolve '../0000_abnormal_morlocks.sql'` mesmo com transformer configurado | Usar **babel plugin** que substitui `ImportDeclaration` por `VariableDeclaration` no AST. Plugin corre na fase de parse, que é sempre invocada. Ver `babel-plugin-sql-import.js`. |
+| **NativeWind v4 — CSS não aplicar (estilos "raw" no ecrã)** | 2 causas combinadas: (a) `nativewind/babel` deve ser **PRESET**, não plugin (ver linha acima); (b) `global.css` **tem de ser importado** no root layout (`import '../../global.css';` em `src/app/_layout.tsx`). Sem o import, Metro processa o input mas não o inclui no bundle → zero estilos. |
+| `Failed to find a reliable PRNG (PRNG_DETECT)` ao usar `ulid()` em RN | `ulid@3` usa `crypto.getRandomValues()` que não existe em RN por padrão. Instalar `react-native-get-random-values` e importar como side-effect **antes** de qualquer código que use `ulid`/`uuid`/etc: `import 'react-native-get-random-values';` no topo de `src/app/_layout.tsx`. Package: `~1.11.0`. |
+| `TaskRow` mostra só checkbox, sem título (mesmo com NativeWind aplicado) | **Causa real:** `react-native-bouncy-checkbox@4.1.4` renderiza SEMPRE um `View` interno com `flex: 1` (o `textContainer`), mesmo quando não passas a prop `text`. Esse `flex: 1` interno faz o TouchableComponent (Pressable) do checkbox expandir para **toda a largura** do row, esmagando o `View className="flex-1"` do título para 0px. **Fix:** passar `disableText` (ou `disableText={true}`) ao BouncyCheckbox — assim o `textContainer` interno não é renderizado e o checkbox fica com o seu tamanho natural. |
 
 ---
 
@@ -373,38 +389,151 @@ Criar a camada de hooks de dados que a UI consome. **Sem cache, sem optimistic u
 
 ---
 
-## 12. Próxima etapa (1.6) — Quick Add (POC)
+## 12. Etapa 1.6 — Quick Add (POC) (CONCLUÍDA)
 
 ### Objectivo
 Implementar a feature end-to-end de captura rápida de tarefa: o utilizador escreve "Comprar leite amanhã !p1 #trabalho" e o parser local extrai metadados, persiste, e a tarefa aparece em "Hoje". Validação final da arquitectura (DB + repos + hooks + bus + UI).
 
+### Ficheiros criados
+| Ficheiro | Conteúdo |
+|----------|----------|
+| `src/services/quick-capture.service.ts` | Parser local (regex): extrai `!p1` (priority), `#projeto` (project), `@etiqueta` (label), `hoje/amanhã/today/tomorrow` (date) |
+| `src/services/quick-capture.service.test.ts` | 7 testes (lógica pura — title, priority, project, label, today, tomorrow, combined) |
+| `src/schemas/task.schema.ts` | Zod `quickAddParsedSchema` (validação defensiva no hook) |
+| `src/hooks/use-quick-add.ts` | Mutation encadeada: parse → find-or-create project → find-or-create label → create task → attach label |
+| `src/components/tasks/TaskRow.tsx` | Linha de tarefa: BouncyCheckbox + título + chip priority + badge data |
+| `src/app/quick-add.tsx` | Modal Quick Add: TextInput multiline + validação inline + botão "Adicionar" |
+
+### Ficheiros modificados
+| Ficheiro | Alteração |
+|----------|-----------|
+| `src/app/index.tsx` | Substitui `PreviewScreen` por `TodayScreen` (consome `useTodayTasks()`, renderiza `TaskRow`, header com botão `+`) |
+| `src/app/_layout.tsx` | Adicionado `<Stack.Screen name="quick-add" options={{ presentation: 'modal', headerShown: false }} />` |
+
+### Validação
+- `npx tsc --noEmit` → OK
+- `npx eslint .` → OK
+- `npm test` → **66/66 testes** (59 anteriores + 7 do parser)
+- `preview/index.tsx` mantido (candidato a remoção — segue regra do AGENTS.md)
+
+### Princípios aplicados
+- **Parser é pura lógica** → testável sem RN/Drizzle. Stateless (sem `lastIndex` partilhado entre regexes).
+- **Project/label find-or-create** → UX sem fricção: o utilizador não precisa de criar projectos antes de referenciá-los.
+- **Validação Zod no hook** → `quickAddParsedSchema.parse()` rejeita título vazio com mensagem útil.
+- **Optimistic update não usado** → SQLite local é rápido (<20ms). Sem latência para mascarar.
+- **Tela "Hoje" mostra também tarefas atrasadas** → `useTodayTasks` (já existia em 1.5) usa `or(eq(dueDate, today), lte(dueDate, today))`.
+
+### Decisões técnicas
+- **Rota `quick-add` directa** (sem grupo `(modals)`) — adicionado depois em 1.7 com as tabs.
+- **`router.push('/quick-add' as never)`** — typed routes do SDK 55 não conhece a rota nova sem regeneração; cast é workaround mínimo.
+- **Regex `\b` final substituído por lookarounds** — bug V8 com `\b` em palavra Unicode ("amanhã") no fim-de-string. Solução: `/(?:^|\W)(amanh[ãa]|tomorrow)(?=\W|$)/iu`.
+- **`useQuickAdd` emite só `tasks:changed`** — queries de `projects:changed` / `labels:changed` não refrescam; aceitável para POC (Projects/Labels tabs não montados). Em 1.7 avaliar `eventBus.emit` adicional.
+- **BouncyCheckbox `onPress`** — API v4 ainda suporta; `handleToggle` ignora o arg (calcula `!isDone` do estado controlado).
+
+### Notas para o futuro (1.7 e sync cloud)
+- Quando `(tabs)` entrar, mover `index.tsx` para `src/app/(tabs)/index.tsx`. O `preview/` pode ser removido.
+- Quando sync entrar, `useQuickAdd` deve envolver cada sub-op com `await syncWorker.push()` antes do `eventBus.emit` final.
+- `useTask` (hook de query detalhe) e `useUpdateTask` já estão prontos para a tela de detalhe em fase 2.
+
+---
+
+## 13. Próxima etapa (1.7) — Bottom Tabs + FAB
+
+### Objectivo
+Implementar a navegação por tabs (Opção B: Hoje, Agenda, FAB central, Pesquisar, Projetos) com FAB elevado, animação de pressão e gesto de long press reservado para futura IA. Validar o padrão `@bottom-tabs/react-navigation` + `withLayoutContext` no Expo Router SDK 55.
+
 ### Ficheiros a criar
 | Ficheiro | Conteúdo |
 |----------|----------|
-| `src/services/quick-capture.service.ts` | Parser local (regex): extrai `!p1` (priority), `#projeto` (project), `@etiqueta` (label), `amanhã/hoje` (date) |
-| `src/schemas/task.schema.ts` | Zod schema para validação do form |
-| `src/app/(modals)/quick-add.tsx` | Modal com `Input` (NativeWind) + botão "Adicionar" |
-| `src/components/tasks/TaskRow.tsx` | Linha de tarefa (checkbox + título + priority badge) |
-| `src/app/(tabs)/index.tsx` | Tela "Hoje" que consome `useTodayTasks()` e renderiza `TaskRow` |
+| `src/app/(tabs)/_layout.tsx` | `<Tabs>` wrapped via `withLayoutContext(BottomTabBar)` — 5 tabs, FAB central sem screen (devolve `null`) |
+| `src/app/(tabs)/index.tsx` | Move da rota actual `src/app/index.tsx` para cá (tela "Hoje") |
+| `src/app/(tabs)/agenda.tsx` | Placeholder "Em breve" (calendário é fase 2) |
+| `src/app/(tabs)/search.tsx` | Placeholder "Em breve" (pesquisa é fase 2) |
+| `src/app/(tabs)/projects.tsx` | Placeholder "Em breve" ou lista básica de projectos (consome `useProjects`) |
+| `src/components/navigation/FAB.tsx` | Contentor de modos (`mode="quickAdd" \| "assistant"`), escala 0.94 com Reanimated, `onPress`/`onLongPress` |
 
 ### Ficheiros a modificar
 | Ficheiro | Alteração |
 |----------|-----------|
-| `src/app/_layout.tsx` | Adicionar rota modal para quick-add |
-| `src/app/index.tsx` | Redirecionar para `/(tabs)` (em vez de preview) |
+| `src/app/index.tsx` | Remover (movido para `(tabs)/index.tsx`) OU redirecionar para `/(tabs)/index` |
+| `src/app/_layout.tsx` | Sem alterações directas (o `(tabs)/_layout.tsx` é auto-descoberto) |
+| `src/app/quick-add.tsx` | Mover para `src/app/(modals)/quick-add.tsx` + criar `src/app/(modals)/_layout.tsx` com `<Stack screenOptions={{ presentation: 'modal' }} />` |
+| `app.json` | Plugin `react-native-bottom-tabs` (já adicionado na 1.1); rever `android.tabBar` config |
+| `package.json` | Nada (deps já instaladas em 1.1) |
 
 ### Fluxo
-1. Utilizador escreve texto no input.
-2. Parser local extrai `{ title, priority?, projectName?, labelName?, dueDate? }`.
-3. `useCreateTask().mutate(parsed)` → DB + outbox.
-4. Event bus emite `tasks:changed` → `useTodayTasks` refresca automaticamente.
-5. Modal fecha.
+1. Utilizador abre a app → cai em `(tabs)/index` ("Hoje").
+2. Tap no FAB central → `tabBarButton` previne navegação, faz `router.push('/(modals)/quick-add')`.
+3. Long press no FAB → `toast.info('Em breve')` (placeholder para futura IA).
+4. Mudar de tab → Reanimated faz fade/slide.
 
 ### Validação
-- Criar tarefa via Quick Add → aparece em "Hoje" → DB persiste → outbox regista evento.
-- App a correr no emulador Android.
+- Navegação entre 4 tabs (Hoje, Agenda, Pesquisar, Projetos) fluida.
+- FAB central abre o Quick Add modal.
+- Long press no FAB mostra toast.
+- Dev build Android arranca (FAB requer `@bottom-tabs/react-navigation`; não corre em Expo Go — aceitável).
+
+### Riscos
+- `@bottom-tabs/react-navigation` pode ter fricções com `withLayoutContext` em SDK 55. Se sim, fallback para `@react-navigation/bottom-tabs`.
+- Reanimated 4 + `react-native-bottom-tabs`: validar que gestos não conflitam com `react-native-gesture-handler`.
 
 ---
 
-> Última actualização: fim da etapa 1.5 (Hooks de dados).
-> Próximo marco: etapa 1.6 (Quick Add POC).
+> Última actualização: TaskRow layout fix (BouncyCheckbox `disableText` — esmagava o título).
+
+---
+
+## 14. Notas desta sessão (build & polish)
+
+### 14.1 Build errors corrigidos antes do primeiro `npm run android` bem-sucedido
+
+| # | Erro | Causa | Solução |
+|---|------|-------|---------|
+| 1 | `Cannot find module 'babel-preset-expo'` | Preset hoisted em `expo/node_modules/`, não no root | Adicionar `"babel-preset-expo": "~55.0.22"` a devDependencies; `npm install --legacy-peer-deps` |
+| 2 | `.plugins is not a valid Plugin property` (Babel 7.29+ validation) | `require('nativewind/babel')` devolve `{plugins: [P1, P2, 'react-native-worklets/plugin']}` (função, não plugin) | Em `babel.config.js`: `plugins: [...require('nativewind/babel')().plugins]` |
+| 3 | `Unable to resolve '../0000_abnormal_morlocks.sql'` | Metro sem loader para `.sql`. Custom `babelTransformerPath` (em `metro.config.js`) **não é invocado** pelo worker para extensões não-padrão | Babel plugin `babel-plugin-sql-import.js` que substitui `ImportDeclaration` por `VariableDeclaration` inlining o conteúdo do ficheiro. Plugin corre no parse (sempre invocado) |
+
+### 14.2 Ficheiros criados nesta sessão
+- `babel-plugin-sql-import.js` — plugin babel que inlina `.sql` como string
+
+### 14.3 Ficheiros modificados nesta sessão
+- `package.json` — adicionado `babel-preset-expo` a devDependencies
+- `babel.config.js` — `nativewind/babel` como **PRESET** (não plugin) + plugin `./babel-plugin-sql-import.js`. Configuração canónica das docs.
+- `metro.config.js` — `sourceExts.push('sql')` mantido; `babelTransformerPath` revertido (custom transformer approach abandonado)
+- `metro-transformer.js` — **removido** (dead code, nunca invocado)
+- `src/app/_layout.tsx` — `headerShown: false` no screenOptions do Stack; **`import '../../global.css';` adicionado** (necessário para Metro bundlar os estilos processados pelo `withNativeWind`); **`import 'react-native-get-random-values';` adicionado** (polyfill para `ulid()`)
+- `src/app/index.tsx` — botão "+" maior (w-12 h-12, ícone 28, shadow-lg); empty state com CTA `<Button>` "Nova tarefa"
+- `src/components/tasks/TaskRow.tsx` — wrap do `Pressable` em `<View className="flex-1">` (Pressable não respeita flex-1); `numberOfLines={2}` no título
+
+### 14.4 Pegadinhas novas (já adicionadas à tabela §7)
+- `babel-preset-expo` hoisting
+- `nativewind/babel` é função, não plugin object (e **deve ser PRESET, não plugin**)
+- Metro worker não invoca custom `babelTransformerPath` para extensões não-padrão
+- **`global.css` tem de ser importado no root layout** — sem isso, Metro não bundla os estilos do NativeWind
+- **`ulid()` falha com `PRNG_DETECT`** em RN — polyfill `react-native-get-random-values` importado como side-effect
+- **`react-native-bouncy-checkbox` esmaga siblings** — passa sempre `disableText` para o `textContainer` interno (com `flex: 1`) não sugar toda a largura do row
+
+### 14.5 Polish visual pós-primeiro-build
+Após `npm run android` bem-sucedido, ecrã inicial mostrou "Index" no topo (header Stack duplicado) e botão "+" mal visível. Correcções aplicadas em `src/app/index.tsx` e `src/app/_layout.tsx` (ver §14.3).
+
+### 14.6 Persistência de dados (confirmada)
+- DB em `expo-sqlite` → storage privado (`/data/data/com.jarvis.app/databases/jarvis.db`).
+- Persiste em: kill+reabrir, `adb install -r` (default do `expo run:android`), hot reload, prebuild --clean.
+- **Não** persiste em: uninstall, "Limpar dados" Android, `adb uninstall`, mudança de `android.package` em `app.json`.
+- Migrações Drizzle são idempotentes (tabela `__drizzle_migrations`).
+- Backup manual: `adb shell run-as com.jarvis.app cat databases/jarvis.db > backup.db`; restore via `adb push` + `run-as cp`.
+- Outbox acumula entries a cada mutation (sync-ready, drenada em fase 2).
+
+### 14.7 Validação final
+- `npx tsc --noEmit` → OK
+- `npx eslint .` → OK
+- `npm test` → **66/66 testes** (10 ficheiros)
+- `npm run android` → app arranca, Quick Add modal abre, parser funciona, tarefa aparece em "Hoje"
+- Persistência confirmada: kill+reabrir mantém DB intacta
+
+### 14.8 Próximos passos
+- ✅ Etapa 1.6 Quick Add POC oficialmente completa (parser + find-or-create + event bus + UI formatada + persistência confirmada)
+- ➡️ Avançar para **Etapa 1.7 — Bottom Tabs + FAB** (ver §13)
+- Smoke test mais profundo em 1.6: criar várias tarefas com variações de sintaxe, dark mode toggle, tap em row para toggle complete, validar refresh via event bus
+- Avançar para **Etapa 1.7** (Bottom Tabs + FAB) — ver §13
+> Próximo marco: etapa 1.7 (Bottom Tabs + FAB).

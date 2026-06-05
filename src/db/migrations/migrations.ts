@@ -3,8 +3,8 @@
 // O expo-sqlite não aceita `migrationsFolder` — exige um objecto { journal, migrations }.
 // Os ficheiros .sql e meta/_journal.json são gerados por `drizzle-kit generate`.
 
-import journal from './meta/_journal.json';
 import m0000 from './0000_abnormal_morlocks.sql';
+import journal from './meta/_journal.json';
 
 export default {
   journal,

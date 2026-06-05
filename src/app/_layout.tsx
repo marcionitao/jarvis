@@ -1,42 +1,47 @@
 // src/app/_layout.tsx
-// Root layout — providers e fontes. Stack vazio; o ecrã inicial é o preview
-// até a Etapa 1.6 (Quick Add) entrar em cena.
+// Root layout — providers, fontes e rotas (Stack). Ecrã inicial é a tela
+// "Hoje" (Etapa 1.6). O modal Quick Add é uma rota stack com presentation: 'modal'.
 /* eslint-disable @typescript-eslint/no-require-imports */
 
-import { Stack } from 'expo-router';
-import { useEffect } from 'react';
-import * as SplashScreen from 'expo-splash-screen';
+import 'react-native-get-random-values';
+import '../../global.css';
+
 import { useFonts } from 'expo-font';
+import { Stack } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
+import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { DBProvider } from '@/state/db.context';
-import { ThemeProvider } from '@/state/theme.store';
 import { I18nProvider } from '@/state/i18n.context';
 import { NotificationsProvider } from '@/state/notifications.context';
-import { useTheme } from '@/state/theme.store';
+import { ThemeProvider, useTheme } from '@/state/theme.store';
 
 SplashScreen.preventAutoHideAsync();
 
 function ThemedStack() {
   const { colors } = useTheme();
   return (
-    <Stack
-      screenOptions={{
-        headerStyle: { backgroundColor: colors.background },
-        headerTintColor: colors.foreground,
-        contentStyle: { backgroundColor: colors.background },
-      }}
-    />
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          headerStyle: { backgroundColor: colors.background },
+          headerTintColor: colors.foreground,
+          contentStyle: { backgroundColor: colors.background },
+        }}
+      >
+        <Stack.Screen name="quick-add" options={{ presentation: 'modal', headerShown: false }} />
+      </Stack>
   );
 }
 
 export default function RootLayout() {
   const [fontsLoaded, fontsError] = useFonts({
-    'Inter-Regular': require('../assets/fonts/Inter-Regular.ttf'),
-    'Inter-Medium': require('../assets/fonts/Inter-Medium.ttf'),
-    'Inter-SemiBold': require('../assets/fonts/Inter-SemiBold.ttf'),
-    'Inter-Bold': require('../assets/fonts/Inter-Bold.ttf'),
-    'SpaceMono-Regular': require('../assets/fonts/SpaceMono-Regular.ttf'),
+    'Inter-Regular': require('../../assets/fonts/Inter-Regular.ttf'),
+    'Inter-Medium': require('../../assets/fonts/Inter-Medium.ttf'),
+    'Inter-SemiBold': require('../../assets/fonts/Inter-SemiBold.ttf'),
+    'Inter-Bold': require('../../assets/fonts/Inter-Bold.ttf'),
+    'SpaceMono-Regular': require('../../assets/fonts/SpaceMono-Regular.ttf'),
   });
 
   useEffect(() => {
