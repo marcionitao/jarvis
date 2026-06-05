@@ -1,17 +1,9 @@
-import { Text, View, StyleSheet } from "react-native";
+// src/app/index.tsx
+// Ecrã inicial — redireciona para o preview de design system (temporário).
+// Será substituído pela tab "Hoje" na Etapa 1.7.
+
+import { PreviewScreen } from '@/components/preview';
 
 export default function Index() {
-  return (
-    <View style={styles.container}>
-      <Text>Edit src/app/index.tsx to edit this screen.</Text>
-    </View>
-  );
+  return <PreviewScreen />;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-});
