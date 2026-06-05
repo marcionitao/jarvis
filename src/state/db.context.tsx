@@ -1,18 +1,45 @@
 // src/state/db.context.tsx
-// DBProvider — stub para a Etapa 1.3 (Drizzle + expo-sqlite).
-// No MVP, o `ready: false` indica que o cliente ainda não foi inicializado.
-// A interface é a fronteira que os repos e hooks consomem.
+// DBProvider — inicializa a DB local (Drizzle + expo-sqlite) e corre o seed mínimo.
+// Disponibiliza `db` e `ready` via hook `useDB`.
 
-import { createContext, useContext } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
+import { ActivityIndicator, View } from 'react-native';
+import { getDB, JarvisDB } from '@/db/client';
+import { seedIfEmpty } from '@/db/seed';
 
 interface DBContextValue {
   ready: boolean;
+  db: JarvisDB | null;
 }
 
 const DBContext = createContext<DBContextValue | null>(null);
 
 export function DBProvider({ children }: { children: React.ReactNode }) {
-  return <DBContext.Provider value={{ ready: false }}>{children}</DBContext.Provider>;
+  const [db, setDb] = useState<JarvisDB | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const instance = await getDB();
+      await seedIfEmpty();
+      if (!cancelled) setDb(instance);
+    })().catch((err) => {
+      console.error('[DBProvider] init failed', err);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (!db) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator />
+      </View>
+    );
+  }
+
+  return <DBContext.Provider value={{ ready: true, db }}>{children}</DBContext.Provider>;
 }
 
 export function useDB(): DBContextValue {

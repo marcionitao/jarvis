@@ -126,7 +126,7 @@ jarvis/
     │   ├── theme.store.tsx        # ThemeProvider (light/dark/system + AsyncStorage)
     │   ├── i18n.context.tsx       # I18nProvider (pt/en + AsyncStorage)
     │   ├── notifications.context.tsx  # Handler + push token + channels
-    │   └── db.context.tsx         # DBProvider (STUB — pronto para 1.3)
+    │   └── db.context.tsx         # DBProvider (Drizzle client + seed automático)
     ├── i18n/
     │   ├── pt.json
     │   └── en.json
@@ -143,7 +143,16 @@ jarvis/
     │       ├── date.ts            # formatDate/formatRelative/formatSmartDate
     │       ├── date.test.ts       # 4 testes smoke (passa)
     │       └── priority.ts        # getPriorityLabel/getPriorityColor
-    ├── db/                        # (Vazio — etapa 1.3)
+    ├── db/                        # ← etapa 1.3 concluída
+    │   ├── schema.ts              # 7 tabelas Drizzle + índices
+    │   ├── client.ts              # Singleton Drizzle + expo-sqlite + migrate
+    │   ├── seed.ts                # Seed idempotente (user + Inbox)
+    │   └── migrations/            # Geradas por drizzle-kit
+    │       ├── 0000_abnormal_morlocks.sql
+    │       ├── migrations.ts      # Aggregator {journal, migrations}
+    │       └── meta/
+    │           ├── _journal.json
+    │           └── 0000_snapshot.json
     ├── repositories/              # (Vazio — etapa 1.4)
     ├── hooks/                     # (Vazio — etapa 1.5)
     ├── schemas/                   # (Vazio — etapa 1.6)
@@ -158,8 +167,8 @@ jarvis/
 |---|-------|--------|------------|
 | 1.1 | Setup de packages | **Concluída** | tsc OK, eslint OK |
 | 1.2 | Providers e UI base | **Concluída** | tsc OK, eslint OK, 4/4 testes |
-| 1.3 | Schema DB + migrações | **Pendente** ← próxima | — |
-| 1.4 | Repositórios + testes | Pendente | — |
+| 1.3 | Schema DB + migrações | **Concluída** | tsc OK, eslint OK, migration gerada |
+| 1.4 | Repositórios + testes | **Pendente** ← próxima | — |
 | 1.5 | Hooks de dados | Pendente | — |
 | 1.6 | Quick Add (POC) | Pendente | — |
 | 1.7 | Bottom Tabs + FAB | Pendente | — |
@@ -194,59 +203,74 @@ npm run android         # dev build + emulador Android (requer SDK)
 | Inter fonts não descarregáveis de fora (rede limitada) | Copiar de `node_modules/@expo-google-fonts/inter/{400Regular,500Medium,600SemiBold,700Bold}/` para `assets/fonts/` |
 | `Ionicons` (default export) sem `IconProps` nomeado | Usar `ComponentProps<typeof Ionicons>['name']` |
 | `expo install` falha com peer dep | Fallback para `npm install --save --legacy-peer-deps <pkg>` |
+| `drizzle-orm/expo-sqlite` migrator não aceita `migrationsFolder` | Usar aggregator `{ journal, migrations }` importado como JS object |
+| Imports de ficheiros `.sql` sem tipos | Adicionar `declare module '*.sql'` em `nativewind-env.d.ts` |
 
 ---
 
-## 8. Próxima etapa (1.3) — Schema DB + migrações
+## 8. Etapa 1.3 — Schema DB + migrações (CONCLUÍDA)
 
 ### Objectivo
-Inicializar a base de dados local (SQLite via `expo-sqlite`) com o schema completo (6 tabelas + índices) e gerar/aplicar a primeira migração.
+Inicializar a base de dados local (SQLite via `expo-sqlite`) com o schema completo (7 tabelas + índices) e gerar/aplicar a primeira migração.
+
+### Ficheiros criados
+| Ficheiro | Conteúdo |
+|----------|----------|
+| `src/db/schema.ts` | Schema Drizzle: `users`, `projects`, `tasks`, `labels`, `taskLabels`, `reminders`, `outbox` (7 tabelas) + índices |
+| `src/db/client.ts` | Init pattern (singleton), `expo-sqlite` + Drizzle, migração on first launch |
+| `src/db/seed.ts` | Seed mínimo idempotente (utilizador default + projeto Inbox) |
+| `src/db/migrations/0000_abnormal_morlocks.sql` | Primeira migração (gerada por `drizzle-kit`) |
+| `src/db/migrations/migrations.ts` | Aggregator `{ journal, migrations }` para o migrator do expo-sqlite |
+| `src/db/migrations/meta/_journal.json` | Journal gerado por drizzle-kit |
+| `src/db/migrations/meta/0000_snapshot.json` | Snapshot do schema |
+
+### Ficheiros modificados
+| Ficheiro | Alteração |
+|----------|-----------|
+| `src/state/db.context.tsx` | Substituir stub por implementação real com Drizzle client + seed automático |
+| `nativewind-env.d.ts` | Adicionar declaração `declare module '*.sql'` para imports de .sql |
+
+### Validação
+- `npx tsc --noEmit` → OK
+- `npx eslint .` → OK
+- `npm test` → 4/4 passa
+- `npm run db:generate` → migração gerada (7 tabelas, 6 índices)
+
+### Notas
+- O migrator do `drizzle-orm/expo-sqlite` exige o formato `{ journal, migrations }` em vez de `migrationsFolder`. Por isso o ficheiro `migrations.ts` agrega o `_journal.json` + os ficheiros `.sql`.
+- IDs determinísticos no seed (`01J0USER...`, `01J0INBOX...`) para reprodutibilidade.
+- O `DBProvider` mostra `ActivityIndicator` enquanto a DB inicializa.
+
+---
+
+## 9. Próxima etapa (1.4) — Repositórios + testes
+
+### Objectivo
+Criar a camada de repositórios (tasks, projects, labels, reminders, outbox) que serve de **fronteira de dados** entre a UI/hooks e a DB. Os repos devolvem DTOs (nunca entidades de DB) e gerem a `outbox` para preparar sync futuro. Cobertura de testes >80% nos repos.
 
 ### Ficheiros a criar
 | Ficheiro | Conteúdo |
 |----------|----------|
-| `src/db/schema.ts` | Schema Drizzle: `users`, `projects`, `tasks`, `labels`, `taskLabels`, `reminders`, `outbox` |
-| `src/db/client.ts` | Init pattern (singleton), `expo-sqlite` + Drizzle, migração on first launch |
-| `src/db/migrations/0000_*.sql` | Primeira migração (gerada por `drizzle-kit`) |
-| `src/db/seed.ts` | Opcional — seed mínimo (utilizador default + projeto Inbox) |
+| `src/repositories/tasks.repo.ts` | CRUD + queries: `getById`, `list`, `listByProject`, `listByDueDate`, `create`, `update`, `delete` |
+| `src/repositories/projects.repo.ts` | CRUD: `getById`, `list`, `listActive`, `create`, `update`, `archive`, `delete` |
+| `src/repositories/labels.repo.ts` | CRUD + `attachToTask` / `detachFromTask` |
+| `src/repositories/reminders.repo.ts` | CRUD + `listPending` + `markFired` |
+| `src/repositories/outbox.repo.ts` | `enqueue`, `listPending`, `markAttempt` |
+| `src/repositories/index.ts` | Re-exports |
+| `src/repositories/*.test.ts` | Testes Vitest com SQLite in-memory (lógica pura) |
 
-### Ficheiros a modificar
-| Ficheiro | Alteração |
-|----------|-----------|
-| `src/state/db.context.tsx` | Substituir stub por implementação real com Drizzle client |
+### Princípios
+- Repos são **assíncronos** e devolvem **DTOs** (tipos inferidos do schema Drizzle).
+- Toda mutation (create/update/delete) enfileira um evento na `outbox` (sync-ready).
+- `clientUpdatedAt` actualizado em cada update.
+- Testes usam `better-sqlite3` em memória (sem dependência do `expo-sqlite` em ambiente Node).
 
-### Tabelas (recordatório do `analise-do-produto.md` secção 6)
-- `users` — id (ULID), name, timezone, createdAt, updatedAt
-- `projects` — id, name, color, icon, parentId, order, archivedAt, createdAt, updatedAt, clientUpdatedAt, syncStatus
-- `tasks` — id, title, description, projectId, parentId, priority (1-4), status ('todo'|'done'), dueDate, dueTime, recurrenceRule, order, completedAt, createdAt, updatedAt, clientUpdatedAt, syncStatus
-- `labels` — id, name, color, createdAt
-- `taskLabels` — taskId, labelId (M:N)
-- `reminders` — id, taskId, triggerAt, type, relativeMinutes, notificationId, fired
-- `outbox` — id, entity, entityId, op, payload, createdAt, attempts
-
-### Índices essenciais
-- `tasks(dueDate, status)` — feed "Hoje/Próximas"
-- `tasks(projectId, status, order)` — lista de projeto
-- `tasks(clientUpdatedAt)` — sync incremental (futuro)
-- `tasks(title)` — FTS5 para pesquisa (adiar para fase 2)
-- `outbox(createdAt)` — consumir mutations por ordem
-
-### Fluxo de execução esperado
-1. Apresentar plano detalhado da etapa 1.3.
-2. Listar packages a instalar (já estão — só `expo-sqlite` e `drizzle-orm` + `drizzle-kit`).
-3. Listar ficheiros a criar/modificar.
-4. Pedir confirmação.
-5. Após aprovação:
-   - Criar `src/db/schema.ts` com Drizzle.
-   - Criar `src/db/client.ts` com init pattern + migração on first launch.
-   - Correr `npm run db:generate` para gerar a migração SQL.
-   - Correr `npm run db:migrate` para validar (ou testar via app).
-   - Actualizar `src/state/db.context.tsx` para usar o client real.
-6. Validar: `npx tsc --noEmit && npx eslint . && npm test`.
+### Validação
+- `npm test` passa com cobertura >80% nos repos.
 
 ---
 
-## 9. Notas de processo
+## 10. Notas de processo
 
 - **Confirmar antes de aplicar** alterações a `package.json`, `app.json`, `tsconfig.json`, `babel.config.js`, `metro.config.js`, `tailwind.config.js`.
 - Para substituições simples, usar `bash`/`sed` em vez de `edit` (regra do AGENTS.md).
@@ -258,5 +282,5 @@ Inicializar a base de dados local (SQLite via `expo-sqlite`) com o schema comple
 
 ---
 
-> Última actualização: fim da etapa 1.2 (Providers e UI base).
-> Próximo marco: etapa 1.3 (Schema DB + migrações).
+> Última actualização: fim da etapa 1.3 (Schema DB + migrações).
+> Próximo marco: etapa 1.4 (Repositórios + testes).
