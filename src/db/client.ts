@@ -6,15 +6,16 @@
 import { drizzle, ExpoSQLiteDatabase } from 'drizzle-orm/expo-sqlite';
 import { openDatabaseAsync, SQLiteDatabase } from 'expo-sqlite';
 import { migrate } from 'drizzle-orm/expo-sqlite/migrator';
+import { BaseSQLiteDatabase } from 'drizzle-orm/sqlite-core';
 import * as schema from './schema';
 import migrations from './migrations/migrations';
 
 const DB_NAME = 'jarvis.db';
 
+export type JarvisDB = BaseSQLiteDatabase<'sync', unknown, typeof schema>;
+
 let dbInstance: ExpoSQLiteDatabase<typeof schema> | null = null;
 let sqliteInstance: SQLiteDatabase | null = null;
-
-export type JarvisDB = ExpoSQLiteDatabase<typeof schema>;
 
 export async function getDB(): Promise<JarvisDB> {
   if (dbInstance) return dbInstance;

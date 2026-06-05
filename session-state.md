@@ -66,6 +66,7 @@ Detalhe completo em `analise-do-produto.md` (secções 8.1 e 11).
 ### Dados e forms
 - `drizzle-orm` 0.45.2 + `drizzle-kit` 0.31.10
 - `expo-sqlite` 55.0.16
+- `better-sqlite3` + `@types/better-sqlite3` (testes em memória)
 - `react-hook-form` 7.77 + `zod` 4.4 + `@hookform/resolvers` 5.4
 - `ulid` 3.0 (IDs offline-friendly)
 - `date-fns` 4.4 + locales pt/en
@@ -153,7 +154,15 @@ jarvis/
     │       └── meta/
     │           ├── _journal.json
     │           └── 0000_snapshot.json
-    ├── repositories/              # (Vazio — etapa 1.4)
+    ├── repositories/              # ← etapa 1.4 concluída
+    │   ├── tasks.repo.ts          # CRUD + listToday, listUpcoming, listByProject, toggleComplete
+    │   ├── projects.repo.ts       # CRUD + archive, softDelete
+    │   ├── labels.repo.ts         # CRUD + attachToTask, detachFromTask, listLabelsForTask
+    │   ├── reminders.repo.ts      # CRUD + listPending, listUpcoming, markFired
+    │   ├── outbox.repo.ts         # enqueueOutbox, listPending, markAttempt, remove
+    │   ├── index.ts               # Re-exports públicos
+    │   ├── test-utils.ts          # Helper SQLite in-memory para testes
+    │   └── *.test.ts              # 5 ficheiros, 31 testes
     ├── hooks/                     # (Vazio — etapa 1.5)
     ├── schemas/                   # (Vazio — etapa 1.6)
     └── types/                     # (Vazio — expandir quando necessário)
@@ -168,8 +177,8 @@ jarvis/
 | 1.1 | Setup de packages | **Concluída** | tsc OK, eslint OK |
 | 1.2 | Providers e UI base | **Concluída** | tsc OK, eslint OK, 4/4 testes |
 | 1.3 | Schema DB + migrações | **Concluída** | tsc OK, eslint OK, migration gerada |
-| 1.4 | Repositórios + testes | **Pendente** ← próxima | — |
-| 1.5 | Hooks de dados | Pendente | — |
+| 1.4 | Repositórios + testes | **Concluída** | tsc OK, eslint OK, 35/35 testes |
+| 1.5 | Hooks de dados | **Pendente** ← próxima | — |
 | 1.6 | Quick Add (POC) | Pendente | — |
 | 1.7 | Bottom Tabs + FAB | Pendente | — |
 | 1.8 | Gate Go/No-Go | Pendente | — |
@@ -205,6 +214,8 @@ npm run android         # dev build + emulador Android (requer SDK)
 | `expo install` falha com peer dep | Fallback para `npm install --save --legacy-peer-deps <pkg>` |
 | `drizzle-orm/expo-sqlite` migrator não aceita `migrationsFolder` | Usar aggregator `{ journal, migrations }` importado como JS object |
 | Imports de ficheiros `.sql` sem tipos | Adicionar `declare module '*.sql'` em `nativewind-env.d.ts` |
+| `JarvisDB` (expo-sqlite) e `TestDB` (better-sqlite3) incompatíveis | Usar `BaseSQLiteDatabase<'sync', unknown, typeof schema>` como tipo genérico |
+| `interface DTO extends Type {}` (vazio) é erro de lint | Usar `type DTO = Type` em vez de interface vazia |
 
 ---
 
@@ -243,34 +254,75 @@ Inicializar a base de dados local (SQLite via `expo-sqlite`) com o schema comple
 
 ---
 
-## 9. Próxima etapa (1.4) — Repositórios + testes
+## 9. Etapa 1.4 — Repositórios + testes (CONCLUÍDA)
 
 ### Objectivo
-Criar a camada de repositórios (tasks, projects, labels, reminders, outbox) que serve de **fronteira de dados** entre a UI/hooks e a DB. Os repos devolvem DTOs (nunca entidades de DB) e gerem a `outbox` para preparar sync futuro. Cobertura de testes >80% nos repos.
+Criar a camada de repositórios (tasks, projects, labels, reminders, outbox) que serve de **fronteira de dados** entre a UI/hooks e a DB. Os repos devolvem DTOs e gerem a `outbox` para preparar sync futuro. Cobertura de testes >80% nos repos.
+
+### Ficheiros criados
+| Ficheiro | Conteúdo |
+|----------|----------|
+| `src/repositories/tasks.repo.ts` | CRUD + `getById`, `listByProject`, `listToday`, `listUpcoming`, `toggleComplete`, `search` |
+| `src/repositories/projects.repo.ts` | CRUD + `listActive`, `archive`, `softDelete`, `hardDelete` |
+| `src/repositories/labels.repo.ts` | CRUD + `attachToTask` (idempotente), `detachFromTask`, `listLabelsForTask` |
+| `src/repositories/reminders.repo.ts` | CRUD + `listPending`, `listUpcoming`, `markFired`, `deleteForTask` |
+| `src/repositories/outbox.repo.ts` | `enqueueOutbox`, `listPending`, `markAttempt`, `remove`, `clearAll`, `count` |
+| `src/repositories/index.ts` | Re-exports públicos (namespace + DTOs) |
+| `src/repositories/test-utils.ts` | Helper SQLite in-memory (better-sqlite3) com migrações |
+| `src/repositories/*.test.ts` | 5 ficheiros de testes |
+
+### Ficheiros modificados
+| Ficheiro | Alteração |
+|----------|-----------|
+| `src/db/client.ts` | `JarvisDB` agora é `BaseSQLiteDatabase<'sync', unknown, typeof schema>` — aceita expo-sqlite E better-sqlite3 |
+| `package.json` | Adicionado `better-sqlite3` + `@types/better-sqlite3` (dev) |
+
+### Validação
+- `npx tsc --noEmit` → OK
+- `npx eslint .` → OK
+- `npm test` → **35/35 passa** (31 novos + 4 existentes)
+- Cobertura: cada repo testado em create/read/update/delete + edge cases
+
+### Princípios aplicados
+- Repos são **assíncronos** e devolvem **DTOs** (tipos inferidos do schema Drizzle).
+- Toda mutation (create/update/delete) enfileira evento na `outbox` (sync-ready).
+- `clientUpdatedAt` actualizado em cada update.
+- Testes usam `better-sqlite3` em memória (sem dependência do `expo-sqlite` em ambiente Node).
+- `toggleComplete` gere `completedAt` automaticamente (atribui ao concluir, limpa ao reabrir).
+
+### Notas
+- O tipo `JarvisDB` foi abstraído para `BaseSQLiteDatabase<'sync', unknown, typeof schema>` para aceitar drivers diferentes. Repos funcionam com qualquer um.
+- `search()` é placeholder (sem FTS5 ainda — adiado para fase 2). Implementação actual devolve últimos 100 por data.
+- 5 ficheiros de teste, 31 assertions, padrão `createTestDB()` com `afterEach(close)`.
+
+---
+
+## 10. Próxima etapa (1.5) — Hooks de dados
+
+### Objectivo
+Criar a camada de hooks de dados que a UI consome — uma versão leve de TanStack Query-like. Optimistic updates + cache invalidation + react-query-style. Hooks principais: `useTasks`, `useTaskMutations`, `useProjects`, `useLabels`.
 
 ### Ficheiros a criar
 | Ficheiro | Conteúdo |
 |----------|----------|
-| `src/repositories/tasks.repo.ts` | CRUD + queries: `getById`, `list`, `listByProject`, `listByDueDate`, `create`, `update`, `delete` |
-| `src/repositories/projects.repo.ts` | CRUD: `getById`, `list`, `listActive`, `create`, `update`, `archive`, `delete` |
-| `src/repositories/labels.repo.ts` | CRUD + `attachToTask` / `detachFromTask` |
-| `src/repositories/reminders.repo.ts` | CRUD + `listPending` + `markFired` |
-| `src/repositories/outbox.repo.ts` | `enqueue`, `listPending`, `markAttempt` |
-| `src/repositories/index.ts` | Re-exports |
-| `src/repositories/*.test.ts` | Testes Vitest com SQLite in-memory (lógica pura) |
+| `src/hooks/useTasks.ts` | `useToday`, `useUpcoming`, `useProjectTasks`, `useTask` — cache + refetch + invalidate |
+| `src/hooks/useTaskMutations.ts` | `useCreateTask`, `useUpdateTask`, `useDeleteTask`, `useToggleComplete` — optimistic updates |
+| `src/hooks/useProjects.ts` | `useProjects`, `useCreateProject`, `useArchiveProject` |
+| `src/hooks/useLabels.ts` | `useLabels`, `useCreateLabel`, `useAttachLabel` |
+| `src/hooks/data-store.tsx` | Provider com cache + `useQuery`/`useMutation` simples (in-memory) |
 
 ### Princípios
-- Repos são **assíncronos** e devolvem **DTOs** (tipos inferidos do schema Drizzle).
-- Toda mutation (create/update/delete) enfileira um evento na `outbox` (sync-ready).
-- `clientUpdatedAt` actualizado em cada update.
-- Testes usam `better-sqlite3` em memória (sem dependência do `expo-sqlite` em ambiente Node).
+- Cache em memória (sem persistência). A source of truth é sempre a DB.
+- Mutações fazem **optimistic update** + invalidam queries relevantes.
+- `enabled` flag para queries condicionais.
+- Sem dependências externas — implementação leve (~150 linhas).
 
 ### Validação
-- `npm test` passa com cobertura >80% nos repos.
+- `npx tsc --noEmit && npx eslint . && npm test` tudo OK.
 
 ---
 
-## 10. Notas de processo
+## 11. Notas de processo
 
 - **Confirmar antes de aplicar** alterações a `package.json`, `app.json`, `tsconfig.json`, `babel.config.js`, `metro.config.js`, `tailwind.config.js`.
 - Para substituições simples, usar `bash`/`sed` em vez de `edit` (regra do AGENTS.md).
@@ -282,5 +334,5 @@ Criar a camada de repositórios (tasks, projects, labels, reminders, outbox) que
 
 ---
 
-> Última actualização: fim da etapa 1.3 (Schema DB + migrações).
-> Próximo marco: etapa 1.4 (Repositórios + testes).
+> Última actualização: fim da etapa 1.4 (Repositórios + testes).
+> Próximo marco: etapa 1.5 (Hooks de dados).
