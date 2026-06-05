@@ -69,6 +69,7 @@
     "@testing-library/react-native": "^13.3.3",
     "@types/better-sqlite3": "^7.6.13",
     "@types/react": "~19.2.2",
+    "@types/react-dom": "^19.2.3",
     "@typescript-eslint/eslint-plugin": "^8.60.1",
     "@typescript-eslint/parser": "^8.60.1",
     "better-sqlite3": "^12.10.0",
@@ -77,6 +78,7 @@
     "eslint-config-expo": "~55.0.1",
     "eslint-plugin-react-hooks": "^7.1.1",
     "happy-dom": "^20.10.1",
+    "react-test-renderer": "^19.2.0",
     "typescript": "~5.9.2",
     "vitest": "^4.1.8"
   },
