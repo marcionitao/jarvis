@@ -37,7 +37,6 @@
         }
       ],
       "expo-sqlite",
-      "react-native-bottom-tabs",
       "expo-font"
     ],
     "experiments": {

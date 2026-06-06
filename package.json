@@ -15,7 +15,6 @@
     "db:migrate": "drizzle-kit migrate"
   },
   "dependencies": {
-    "@bottom-tabs/react-navigation": "^1.2.0",
     "@expo-google-fonts/inter": "^0.4.2",
     "@expo/vector-icons": "^15.1.1",
     "@hookform/resolvers": "^5.4.0",
@@ -48,7 +47,6 @@
     "react-dom": "19.2.0",
     "react-hook-form": "^7.77.0",
     "react-native": "0.83.6",
-    "react-native-bottom-tabs": "^1.2.0",
     "react-native-bouncy-checkbox": "^4.1.4",
     "react-native-context-menu-view": "^1.21.0",
     "react-native-gesture-handler": "~2.30.0",

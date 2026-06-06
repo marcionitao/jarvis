@@ -1,6 +1,7 @@
 // src/app/quick-add.tsx
 // Modal Quick Add — captura rápida de tarefa (<5s).
 // Suporta syntax inline: !p1 #projeto @etiqueta hoje/amanhã
+// (Revertido para root-level no Etapa 1.7 — padrão oficial Expo Router.)
 
 import { useState, useMemo } from 'react';
 import { View, TextInput, Pressable, KeyboardAvoidingView, Platform } from 'react-native';

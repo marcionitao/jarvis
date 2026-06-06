@@ -246,6 +246,10 @@ npm run android         # dev build + emulador Android (requer SDK)
 | **NativeWind v4 — CSS não aplicar (estilos "raw" no ecrã)** | 2 causas combinadas: (a) `nativewind/babel` deve ser **PRESET**, não plugin (ver linha acima); (b) `global.css` **tem de ser importado** no root layout (`import '../../global.css';` em `src/app/_layout.tsx`). Sem o import, Metro processa o input mas não o inclui no bundle → zero estilos. |
 | `Failed to find a reliable PRNG (PRNG_DETECT)` ao usar `ulid()` em RN | `ulid@3` usa `crypto.getRandomValues()` que não existe em RN por padrão. Instalar `react-native-get-random-values` e importar como side-effect **antes** de qualquer código que use `ulid`/`uuid`/etc: `import 'react-native-get-random-values';` no topo de `src/app/_layout.tsx`. Package: `~1.11.0`. |
 | `TaskRow` mostra só checkbox, sem título (mesmo com NativeWind aplicado) | **Causa real:** `react-native-bouncy-checkbox@4.1.4` renderiza SEMPRE um `View` interno com `flex: 1` (o `textContainer`), mesmo quando não passas a prop `text`. Esse `flex: 1` interno faz o TouchableComponent (Pressable) do checkbox expandir para **toda a largura** do row, esmagando o `View className="flex-1"` do título para 0px. **Fix:** passar `disableText` (ou `disableText={true}`) ao BouncyCheckbox — assim o `textContainer` interno não é renderizado e o checkbox fica com o seu tamanho natural. |
+| `tabBarButton` (phantom tab) **NÃO existe** no `@bottom-tabs/react-navigation` (native tabs). Só existe em `@react-navigation/bottom-tabs` (JS, default Expo Router `Tabs`) | Para usar o padrão barmittel (tab central raised `+` com `tabBarIcon: () => null` + `tabBarButton: () => <CustomJSX />`), fazer **downgrade para JS tabs**. Trade-off: perde Material 3 nativo, mas JS tabs já renderizam com Material fallback no Android. Ver §15. |
+| `expo prebuild --clean` falha com `ENOENT .../android-icon-foreground.png` se `app.json` `android.adaptiveIcon.foregroundImage/backgroundImage/monochromeImage` apontam para PNGs inexistentes em `assets/images/`. Cache previa mascarava o erro. | Garantir que **todos** os PNGs referenciados em `app.json` `android.adaptiveIcon` existem em `assets/images/`. Se só temos um icon, copiar (ex: `cp assets/images/adaptive-icon.png assets/images/android-icon-foreground.png` para os 3 nomes). Ver §16 (Fase 1). |
+| `react-hooks/immutability` (React 19 Compiler) rejeita `scale.value = withTiming(...)` no Reanimated, reportando "This value cannot be modified" | Adicionar `'react-hooks/immutability': 'off'` em `eslint.config.js` (alinhado com `purity`/`refs`/`set-state-in-effect` que já estão off). O `.value` de `useSharedValue` É para ser mutado — é o contract da Reanimated. Ver §16 (Fase 2). |
+| Modais em route groups (`src/app/(modals)/_layout.tsx` com Stack aninhada `presentation: 'modal'`) causam comportamento imprevisível no Android (freeze, touch events bloqueados) | **Padrão oficial Expo Router:** modais vão em `src/app/<name>.tsx` (root-level), com `<Stack.Screen name="<name>" options={{ presentation: 'modal' }} />` no root Stack. **NÃO** usar groups para modais. Ver §16 (reversão da Fase 3). |
 
 ---
 
@@ -517,7 +521,7 @@ Implementar a navegação por tabs (Opção B: Hoje, Agenda, FAB central, Pesqui
 Após `npm run android` bem-sucedido, ecrã inicial mostrou "Index" no topo (header Stack duplicado) e botão "+" mal visível. Correcções aplicadas em `src/app/index.tsx` e `src/app/_layout.tsx` (ver §14.3).
 
 ### 14.6 Persistência de dados (confirmada)
-- DB em `expo-sqlite` → storage privado (`/data/data/com.jarvis.app/databases/jarvis.db`).
+- DB em `expo-sqlite` → storage privado. **Path real** (SDK 55, expo-sqlite v15+): `/data/data/com.marcionitao.jarvis/files/SQLite/jarvis.db`. (Antes era `databases/` mas mudou.)
 - Persiste em: kill+reabrir, `adb install -r` (default do `expo run:android`), hot reload, prebuild --clean.
 - **Não** persiste em: uninstall, "Limpar dados" Android, `adb uninstall`, mudança de `android.package` em `app.json`.
 - Migrações Drizzle são idempotentes (tabela `__drizzle_migrations`).
@@ -537,3 +541,195 @@ Após `npm run android` bem-sucedido, ecrã inicial mostrou "Index" no topo (hea
 - Smoke test mais profundo em 1.6: criar várias tarefas com variações de sintaxe, dark mode toggle, tap em row para toggle complete, validar refresh via event bus
 - Avançar para **Etapa 1.7** (Bottom Tabs + FAB) — ver §13
 > Próximo marco: etapa 1.7 (Bottom Tabs + FAB).
+
+---
+
+## 15. Análise do padrão barmittel (referência para 1.7)
+
+### 15.1 Contexto
+O utilizador mostrou o projecto `~/MeinProjekts/barmittel` (gestor de despesas, RN + Expo SDK 51, Expo Router) onde existe um **botão "+" fantasma** no centro da bottom tab bar — um tab registado (file-based routing) que **nunca navega** porque o seu `tabBarButton` foi substituído por JSX custom.
+
+### 15.2 Padrão identificado (5 linhas-chave)
+```tsx
+<Tabs.Screen
+  name="plus"
+  options={{
+    title: '',
+    tabBarIcon: () => null,    // esconde ícone default
+    tabBarButton: () => (      // substitui o botão default
+      <View style={{ top: -6, justifyContent: 'center', alignItems: 'center' }}>
+        <TouchableOpacity onPress={() => setModalVisible(true)} activeOpacity={0.7}>
+          <Feather name="plus" size={32} color="..." />
+        </TouchableOpacity>
+      </View>
+    ),
+  }}
+/>
+```
+- Ficheiro `app/(tabs)/plus.tsx` com `return null` (stub obrigatório para file-based routing)
+- `top: -6` no `View` exterior = efeito "raised" (ícone sobe 6px acima da baseline dos outros tabs)
+- `tabBarStyle.height: 70` dá espaço para o ícone raised
+- Tap = side-effect (abrir modal), nunca chama navigation
+- Sem long press no barmittel (AI assistant é um `<AssistantFAB />` **separado**, não variante do +)
+
+### 15.3 Incompatibilidade com native bottom-tabs
+O `tabBarButton` **NÃO existe** no `@bottom-tabs/react-navigation` (native). O native só tem:
+- `tabBarIcon` (função)
+- `tabBarButtonTestID` (string)
+- `tabBar` (função que substitui a tab bar **inteira** em JS)
+- `BottomAccessoryView` (view nativa abaixo do tab bar)
+- `preventsDefault` (bool)
+
+| API surface | Classic JS (`@react-navigation/bottom-tabs`) | Native (`@bottom-tabs/react-navigation`) |
+|-------------|---------------------------------------------|------------------------------------------|
+| `tabBarButton` (per-item custom) | ✅ | ❌ |
+| `tabBar` (custom whole bar) | ✅ | ✅ |
+| `BottomAccessoryView` | ❌ | ✅ |
+| `Material 3` look | ❌ (fallback) | ✅ |
+| Tap + LongPress custom | trivial | só via `tabBar` ou `BottomAccessoryView` |
+
+### 15.4 Decisão tomada
+**Downgrade para JS tabs** (Opção A confirmada pelo utilizador). Justificação:
+- Padrão barmittel é provado (~30 linhas vs ~150 para custom `tabBar`)
+- Tap + long press triviais via `onPress`/`onLongPress` no `TouchableOpacity`
+- Reanimated 4 + gesto de long press com `delayLongPress={400}`
+- Visual continua Material 3 no Android (JS tabs renderiza com Material fallback por defeito)
+- Upgradability: podemos sempre custom `tabBar` no native em 1.7.1 se sentirmos falta do look 100% Material 3
+
+### 15.5 Pegadinha nova (adicionada à §7)
+- **`tabBarButton` (phantom tab) só existe em JS bottom-tabs**, não no `@bottom-tabs/react-navigation` (native). Se queres padrão barmittel no Jarvis → downgrade para JS tabs (default do Expo Router `Tabs`).
+
+---
+
+## 16. Etapa 1.7 — Bottom Tabs + FAB (JS tabs, padrão barmittel)
+
+> **Status:** 🟢 Fases 1, 2, 3, 4 concluídas + reversão + smoke test runtime PASSOU · ⏳ Aguardando decisão sobre próxima etapa (1.8 ou 2.x)
+
+### 16.1 Objectivo
+Implementar navegação por tabs (Hoje, Agenda, +, Pesquisar, Projetos) com o "+" como tab fantasma central (raised, abre Quick Add modal). Tap = Quick Add, long press = placeholder "Em breve" (reservado para futura IA). Validar o padrão `tabBarButton` com `onPress` + `onLongPress` + Reanimated scale.
+
+### 16.2 Ficheiros a criar
+| Ficheiro | Conteúdo |
+|----------|----------|
+| `src/app/(tabs)/_layout.tsx` | `<Tabs>` (Expo Router, default JS) com 5 Tabs.Screen, `tabBarButton` custom no `plus`, animação Reanimated scale 0.94 on press, ToastAndroid no long press |
+| `src/app/(tabs)/index.tsx` | Movido de `src/app/index.tsx` (TodayScreen, SEM o botão + do header — FAB substitui) |
+| `src/app/(tabs)/agenda.tsx` | Placeholder "Em breve" (calendário é fase 2) |
+| `src/app/(tabs)/search.tsx` | Placeholder "Em breve" (pesquisa é fase 2) |
+| `src/app/(tabs)/projects.tsx` | Placeholder "Em breve" (consome `useProjects` numa mini-lista ou só empty state) |
+| `src/app/(tabs)/plus.tsx` | `return null` — stub obrigatório para file-based routing |
+| `src/app/(modals)/_layout.tsx` | `<Stack screenOptions={{ presentation: 'modal', headerShown: false }} />` |
+| `src/app/(modals)/quick-add.tsx` | Movido de `src/app/quick-add.tsx` (inalterado, só path diferente) |
+
+### 16.3 Ficheiros a modificar
+| Ficheiro | Alteração |
+|----------|-----------|
+| `app.json` | Remover plugin `"react-native-bottom-tabs"` |
+| `package.json` | Remover `@bottom-tabs/react-navigation` e `react-native-bottom-tabs` |
+| `src/app/(tabs)/index.tsx` | Remover `<Pressable>` do header (FAB central é o entry point) |
+| `src/app/_layout.tsx` | Sem alterações directas (o `(tabs)` e `(modals)` são auto-descobertos pelo Expo Router) |
+
+### 16.4 Ficheiros a remover
+- ~~`src/app/index.tsx`~~ ✅ **Apagado na Fase 2** (resolvido conflito de rota com `(tabs)/index.tsx`)
+- ~~`src/app/quick-add.tsx`~~ ✅ **Apagado na Fase 3 e re-criado na reversão** (movido para `(modals)/quick-add.tsx`, depois revertido para `src/app/quick-add.tsx` por causa do freeze)
+- ~~`src/app/(modals)/_layout.tsx` e `src/app/(modals)/quick-add.tsx`~~ ✅ **Apagados na reversão** (route group não-padrão, causava freeze)
+
+### 16.5 Fluxo esperado
+1. Utilizador abre a app → cai em `(tabs)/index` ("Hoje").
+2. Tap no **+** central (raised, vermelho, sombra) → `router.push('/(modals)/quick-add')` → modal abre.
+3. Long press no **+** → `ToastAndroid.show('Em breve')` (placeholder).
+4. Tap num dos 4 tabs normais → navega com fade/slide do React Navigation.
+5. Modal fecha com `router.back()` → regresso à tab anterior.
+
+### 16.6 Implementação em 5 fases (a executar sequencialmente)
+
+**Fase 1 — Remover native bottom-tabs** ✅ **CONCLUÍDA**
+1. ✅ Editar `app.json` — removido plugin `"react-native-bottom-tabs"`
+2. ✅ Editar `package.json` — removidos `@bottom-tabs/react-navigation` e `react-native-bottom-tabs`
+3. ✅ `npm install --legacy-peer-deps` (205 packages, 14 moderate vulns — mesmo nível que antes)
+4. ✅ `npx expo prebuild --clean --platform android` (após criar 3 ícones em falta — `android-icon-foreground.png`, `android-icon-background.png`, `android-icon-monochrome.png`, todos cópias de `adaptive-icon.png`)
+- **Verificações:** `app.json`/`package.json`/`android/` zero referências a native tabs. Autolinking dinâmico via Expo Gradle plugin. `newArchEnabled=true`, `hermesEnabled=true` mantidos.
+- **Pegadinha nova (§7 #10):** prebuild --clean falhava com ENOENT para adaptive icon PNGs que não existiam em disco mas estavam referenciados em `app.json`. Cache previa mascarava.
+
+**Fase 2 — Criar grupo (tabs)** ✅ **CONCLUÍDA**
+5. ✅ Criar `src/app/(tabs)/_layout.tsx` com 5 Tabs.Screen + `<CentralFab>` (Reanimated scale 0.94 on press, `delayLongPress={400}` → ToastAndroid "Em breve")
+6. ✅ Criar `src/app/(tabs)/index.tsx` (TodayScreen sem `+` do header)
+7. ✅ Criar `src/app/(tabs)/agenda.tsx`, `search.tsx`, `projects.tsx` (3 placeholders; `projects.tsx` consome `useProjects(true)`), `plus.tsx` (stub `return null`)
+- **Verificações:** tsc OK · eslint OK · 66/66 testes · paths do `+` apontam para `/quick-add` (antigo, ainda funciona)
+- **Pegadinha nova (§7 #11):** `react-hooks/immutability` (React 19 Compiler) rejeita `scale.value = withTiming(...)` no Reanimated. Adicionado `'react-hooks/immutability': 'off'` em `eslint.config.js` (alinhado com `purity`/`refs`/`set-state-in-effect`).
+- **⚠️ Correcção de rota:** `src/app/index.tsx` E `src/app/(tabs)/index.tsx` resolvem ambos para `/` (groups não adicionam path). Conflito detectado após criar `(tabs)/`. **Solução:** apagar `src/app/index.tsx` IMEDIATAMENTE (não esperar pela Fase 4) — a versão nova é cópia sem o `+` do header.
+
+**Fase 3 — Mover Quick Add para (modals)** ⚠️ **REVERTIDA**
+8. ✅ Criar `src/app/(modals)/_layout.tsx` (Stack `presentation: 'modal'`, `headerShown: false`)
+9. ✅ Criar `src/app/(modals)/quick-add.tsx` (cópia literal, só muda header comment)
+10. ✅ Apagar `src/app/quick-add.tsx` (atomicamente após criar o novo)
+11. ✅ Editar `src/app/(tabs)/_layout.tsx` — `router.push('/(modals)/quick-add' as never)`
+12. ✅ Editar `src/app/(tabs)/index.tsx` — `router.push('/(modals)/quick-add' as never)` (empty state CTA)
+13. ✅ Editar `src/app/_layout.tsx` — removido `<Stack.Screen name="quick-add" ...>`
+
+**⚠️ Revertido após smoke test do utilizador (freeze na página do modal).**
+- **Causa:** route group `(modals)` com Stack aninhada `presentation: 'modal'` é não-padrão. Doc oficial Expo Router recomenda modais em root-level (`src/app/<name>.tsx`) + `<Stack.Screen name="<name>" options={{ presentation: 'modal' }} />` no root Stack.
+- **Acções da reversão:**
+  - ✅ Re-criado `src/app/quick-add.tsx` (cópia literal)
+  - ✅ Apagados `src/app/(modals)/_layout.tsx` e `src/app/(modals)/quick-add.tsx`
+  - ✅ `rmdir "src/app/(modals)"`
+  - ✅ Editado `src/app/_layout.tsx` — re-adicionado `<Stack.Screen name="quick-add" options={{ presentation: 'modal', headerShown: false }} />`
+  - ✅ Editado `src/app/(tabs)/_layout.tsx` — `router.push('/quick-add' as never)` (path simples)
+  - ✅ Editado `src/app/(tabs)/index.tsx` — `router.push('/quick-add' as never)` (empty state CTA)
+- **Verificações:** tsc OK · eslint OK · 66/66 testes · estrutura limpa (8 ficheiros: `_layout.tsx`, `quick-add.tsx`, `(tabs)/{_layout,index,plus,agenda,search,projects}.tsx`)
+- **Pegadinha nova (§7 #12):** modais em route groups causam comportamento imprevisível (freeze, touch blocked). Usar root-level.
+
+**Fase 4 — Limpar ficheiros antigos** ✅ **CONCLUÍDA (no-op)**
+- Ambos os ficheiros a apagar (`src/app/index.tsx` e `src/app/quick-add.tsx`) já foram removidos nas Fases 2 e 3, respectivamente, como **correcções de rota obrigatórias** (não podiam coexistir com os novos). Nada a fazer nesta fase.
+
+**Fase 5 — Validar** ✅ **CONCLUÍDA (smoke test runtime passou)**
+14. ✅ `npx tsc --noEmit && npx eslint . && npm test` (66/66 testes passam)
+15. ✅ Rebuild + reload no emulador Android
+16. ✅ Smoke test runtime — 9/10 itens OK:
+   - ✅ App abre em "Hoje" (sem header `+`)
+   - ✅ 5 tabs visíveis (Hoje · Agenda · ⊕ · Pesquisar · Projetos)
+   - ✅ Tab central `+` raised (top: -6, sombra, vermelho)
+   - ✅ **Tap `+` → modal Quick Add abre (sem freeze — reversão funcionou)**
+   - ✅ Long press `+` → toast "Em breve" (Android)
+   - ✅ Criar tarefa `!p1 comprar leite hoje` → aparece na lista
+   - ✅ Tap nos 4 tabs normais → navegam
+   - ✅ Tap no checkbox → tarefa sai da lista "Hoje" (status muda para `done`, filtro `useTodayTasks` exclui concluídas)
+   - ✅ DB persiste: 96KB em `/data/data/com.marcionitao.jarvis/files/SQLite/jarvis.db` (não `/databases/` como tinha errado na §6 — corrigir)
+   - ⏳ **NÃO TESTADO:** dark mode toggle (utilizador não confirmou)
+- **Descoberta do smoke test:** "Tap no checkbox → item desaparece" é **comportamento esperado** (filtro de "Hoje" esconde concluídas). Próximas etapas podem incluir:
+  - **1.7a (polish):** toast "Concluído!" + animação slide-out na TaskRow
+  - **1.7b (filtro):** toggle "Mostrar concluídas" no header "Hoje"
+  - **1.8 (calendário):** implementar Agenda view
+  - **1.9 (pesquisa):** implementar Search view
+  - **2.0 (projetos):** detalhe de projeto + criar/editar projeto
+  - **2.1 (etiquetas):** vista de etiquetas
+  - **2.2 (settings):** tema, idioma, etc.
+
+**Fase 3 — Mover Quick Add para (modals)**
+8. Criar `src/app/(modals)/_layout.tsx`
+9. Criar `src/app/(modals)/quick-add.tsx` (movido, sem alterações)
+
+**Fase 4 — Limpar ficheiros antigos**
+10. Apagar `src/app/index.tsx`
+11. Apagar `src/app/quick-add.tsx`
+
+**Fase 5 — Validar**
+12. `npx tsc --noEmit && npx eslint . && npm test`
+13. Rebuild + reload no emulador Android
+14. Smoke test: tabs navegam, + abre modal, long press mostra toast, dark mode, criar tarefa, voltar para "Hoje", tarefa persiste
+
+### 16.7 Validação final esperada
+- 5 tabs visíveis na barra: Hoje | Agenda | ⊕ | Pesquisar | Projetos
+- Tab central **+** é raised (top: -6), fundo vermelho, ícone branco, sombra
+- Tap → modal Quick Add abre por cima das tabs
+- Long press → "Em breve" toast (Android Toast)
+- Reanimated scale anima 1 → 0.94 → 1 em ~200ms
+- Navegação entre tabs é fluida
+- tsc OK · eslint OK · 66/66 testes passam
+
+### 16.8 Riscos conhecidos
+- **`expo prebuild --clean`** apaga `android/` e regenera. Se houver customizações manuais no Android (SigningConfigs, network security config, etc.) são perdidas. Rever `android/app/build.gradle` antes/depois.
+- **Bottom tab icons**: a usar `Ionicons` (`@expo/vector-icons`) com nomes: `today-outline`, `calendar-outline`, `search-outline`, `folder-outline`. Verificar que renderizam no Android (por vezes `outline` não existe no Ionicons — fallback para filled).
+- **Reanimated worklets** no gesture handler: a escala 0.94 é só visual (não layout-affecting), deve correr no UI thread sem warning.
+- **Native tabs foram removidos da app.json** mas o `react-native-bottom-tabs` continua em `node_modules/` até `npm install`. Limpar para evitar autolinking residual.
+
+> Última actualização: Fase 5 (smoke test runtime) concluída — 9/10 itens OK. ✅ Modal não congela após reversão. Tap-to-complete funciona (filtro `useTodayTasks` exclui `done`). DB persiste em `/data/data/com.marcionitao.jarvis/files/SQLite/jarvis.db` (96KB). A aguardar decisão sobre próxima etapa.
