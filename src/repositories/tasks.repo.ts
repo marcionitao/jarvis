@@ -10,12 +10,23 @@ import { enqueueOutbox } from './outbox.repo';
 
 export type TaskDTO = Task;
 
-function startOfDayEpoch(date: Date): number {
-  return Math.floor(new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime() / 86400000);
+export function toDateKey(date: Date): number {
+  return date.getFullYear() * 10000 + (date.getMonth() + 1) * 100 + date.getDate();
 }
 
-function endOfDayEpoch(date: Date): number {
-  return startOfDayEpoch(date);
+export function fromDateKey(key: number): Date {
+  const y = Math.floor(key / 10000);
+  const m = Math.floor((key % 10000) / 100) - 1;
+  const d = key % 100;
+  return new Date(y, m, d);
+}
+
+function startOfDayKey(date: Date): number {
+  return toDateKey(date);
+}
+
+function endOfDayKey(date: Date): number {
+  return toDateKey(date);
 }
 
 export async function getById(db: JarvisDB, id: string): Promise<TaskDTO | null> {
@@ -41,17 +52,19 @@ export async function listByProject(
     .orderBy(asc(tasks.order));
 }
 
-export async function listToday(db: JarvisDB, today: Date = new Date()): Promise<TaskDTO[]> {
-  const epochDay = startOfDayEpoch(today);
+export async function listToday(
+  db: JarvisDB,
+  today: Date = new Date(),
+  includeCompleted: boolean = false
+): Promise<TaskDTO[]> {
+  const dayKey = startOfDayKey(today);
+  const statusFilter = includeCompleted
+    ? or(eq(tasks.status, 'todo'), eq(tasks.status, 'done'))
+    : eq(tasks.status, 'todo');
   return db
     .select()
     .from(tasks)
-    .where(
-      and(
-        eq(tasks.status, 'todo'),
-        or(eq(tasks.dueDate, epochDay), lte(tasks.dueDate, epochDay))
-      )
-    )
+    .where(and(statusFilter, or(eq(tasks.dueDate, dayKey), lte(tasks.dueDate, dayKey))))
     .orderBy(asc(tasks.dueDate), asc(tasks.order));
 }
 
@@ -60,16 +73,16 @@ export async function listUpcoming(
   from: Date = new Date(),
   days: number = 7
 ): Promise<TaskDTO[]> {
-  const fromDay = startOfDayEpoch(from);
-  const toDay = endOfDayEpoch(new Date(from.getTime() + days * 86400000));
+  const fromKey = startOfDayKey(from);
+  const toKey = endOfDayKey(new Date(from.getTime() + days * 86400000));
   return db
     .select()
     .from(tasks)
     .where(
       and(
         eq(tasks.status, 'todo'),
-        gte(tasks.dueDate, fromDay),
-        lte(tasks.dueDate, toDay)
+        gte(tasks.dueDate, fromKey),
+        lte(tasks.dueDate, toKey)
       )
     )
     .orderBy(asc(tasks.dueDate), asc(tasks.order));

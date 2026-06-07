@@ -16,6 +16,7 @@ import { DBProvider } from '@/state/db.context';
 import { I18nProvider } from '@/state/i18n.context';
 import { NotificationsProvider } from '@/state/notifications.context';
 import { ThemeProvider, useTheme } from '@/state/theme.store';
+import { UIPrefsProvider } from '@/state/ui-prefs.context';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -62,7 +63,9 @@ export default function RootLayout() {
         <ThemeProvider>
           <I18nProvider>
             <NotificationsProvider>
-              <ThemedStack />
+              <UIPrefsProvider>
+                <ThemedStack />
+              </UIPrefsProvider>
             </NotificationsProvider>
           </I18nProvider>
         </ThemeProvider>

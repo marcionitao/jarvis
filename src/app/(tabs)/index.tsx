@@ -2,7 +2,7 @@
 // Ecrã "Hoje" (Etapa 1.6) — agora dentro do grupo (tabs).
 // O botão "+" do header foi removido (FAB central na tab bar substitui).
 
-import { View, FlatList, ActivityIndicator } from 'react-native';
+import { View, FlatList, Pressable, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useTodayTasks } from '@/hooks/use-tasks';
@@ -12,11 +12,13 @@ import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { useTheme } from '@/state/theme.store';
 import { useI18n } from '@/state/i18n.context';
+import { useUIPrefs } from '@/state/ui-prefs.context';
 import type { TaskDTO } from '@/repositories/tasks.repo';
 
 export default function TodayScreen() {
   const { colors } = useTheme();
   const { t } = useI18n();
+  const { showCompleted, toggleShowCompleted } = useUIPrefs();
   const { data, loading, error, refresh } = useTodayTasks();
 
   const tasks: TaskDTO[] = data ?? [];
@@ -25,8 +27,20 @@ export default function TodayScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
       <View className="flex-1">
-        <View className="px-5 pt-2 pb-3">
+        <View className="px-5 pt-2 pb-3 flex-row items-center justify-between">
           <Text variant="h1">{t('tab.today')}</Text>
+          <Pressable
+            onPress={toggleShowCompleted}
+            className="p-2 active:opacity-60"
+            accessibilityRole="button"
+            accessibilityLabel={showCompleted ? t('today.hideCompleted') : t('today.showCompleted')}
+          >
+            <Icon
+              name={showCompleted ? 'eye' : 'eye-off'}
+              size={22}
+              color={colors.mutedForeground}
+            />
+          </Pressable>
         </View>
 
         {loading && tasks.length === 0 ? (

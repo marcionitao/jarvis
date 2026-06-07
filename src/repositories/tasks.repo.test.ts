@@ -2,6 +2,7 @@
 // Testes do repositório de tasks.
 
 import { describe, it, expect, afterEach } from 'vitest';
+import { addDays } from 'date-fns';
 import { createTestDB, type TestDB } from './test-utils';
 import * as tasksRepo from './tasks.repo';
 import * as outboxRepo from './outbox.repo';
@@ -45,30 +46,74 @@ describe('tasks.repo', () => {
   it('listToday: devolve tarefas com dueDate <= hoje e status todo', async () => {
     ({ db, close } = createTestDB());
     const today = new Date();
-    const todayEpoch = Math.floor(
-      new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime() / 86400000
-    );
-    await tasksRepo.create(db, { title: 'Hoje', dueDate: todayEpoch });
-    await tasksRepo.create(db, { title: 'Atrasada', dueDate: todayEpoch - 1 });
-    await tasksRepo.create(db, { title: 'Amanha', dueDate: todayEpoch + 1 });
+    const todayKey = tasksRepo.toDateKey(today);
+    const yesterdayKey = tasksRepo.toDateKey(addDays(today, -1));
+    const tomorrowKey = tasksRepo.toDateKey(addDays(today, 1));
+    await tasksRepo.create(db, { title: 'Hoje', dueDate: todayKey });
+    await tasksRepo.create(db, { title: 'Atrasada', dueDate: yesterdayKey });
+    await tasksRepo.create(db, { title: 'Amanha', dueDate: tomorrowKey });
     await tasksRepo.create(db, { title: 'Sem data' });
     const list = await tasksRepo.listToday(db, today);
     const titles = list.map((t) => t.title).sort();
     expect(titles).toEqual(['Atrasada', 'Hoje']);
   });
 
+  it('listToday(includeCompleted=true): devolve tambem tarefas com status done', async () => {
+    ({ db, close } = createTestDB());
+    const today = new Date();
+    const todayKey = tasksRepo.toDateKey(today);
+    const aberta = await tasksRepo.create(db, { title: 'Aberta', dueDate: todayKey });
+    const concluida = await tasksRepo.create(db, { title: 'Concluida', dueDate: todayKey });
+    await tasksRepo.toggleComplete(db, concluida.id, true);
+    const list = await tasksRepo.listToday(db, today, true);
+    const titles = list.map((t) => t.title).sort();
+    expect(titles).toEqual(['Aberta', 'Concluida']);
+    expect(list.find((t) => t.id === aberta.id)?.status).toBe('todo');
+    expect(list.find((t) => t.id === concluida.id)?.status).toBe('done');
+  });
+
+  it('listToday(includeCompleted=false, default): exclui tarefas done', async () => {
+    ({ db, close } = createTestDB());
+    const today = new Date();
+    const todayKey = tasksRepo.toDateKey(today);
+    const aberta = await tasksRepo.create(db, { title: 'Aberta', dueDate: todayKey });
+    const concluida = await tasksRepo.create(db, { title: 'Concluida', dueDate: todayKey });
+    await tasksRepo.toggleComplete(db, concluida.id, true);
+    const listDefault = await tasksRepo.listToday(db, today);
+    expect(listDefault.map((t) => t.id)).toEqual([aberta.id]);
+    const listExplicit = await tasksRepo.listToday(db, today, false);
+    expect(listExplicit.map((t) => t.id)).toEqual([aberta.id]);
+  });
+
   it('listUpcoming: limita ao intervalo de N dias', async () => {
     ({ db, close } = createTestDB());
     const today = new Date();
-    const todayEpoch = Math.floor(
-      new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime() / 86400000
-    );
-    await tasksRepo.create(db, { title: 'Hoje', dueDate: todayEpoch });
-    await tasksRepo.create(db, { title: '3 dias', dueDate: todayEpoch + 3 });
-    await tasksRepo.create(db, { title: '10 dias', dueDate: todayEpoch + 10 });
+    const todayKey = tasksRepo.toDateKey(today);
+    const in3 = tasksRepo.toDateKey(addDays(today, 3));
+    const in10 = tasksRepo.toDateKey(addDays(today, 10));
+    await tasksRepo.create(db, { title: 'Hoje', dueDate: todayKey });
+    await tasksRepo.create(db, { title: '3 dias', dueDate: in3 });
+    await tasksRepo.create(db, { title: '10 dias', dueDate: in10 });
     const list = await tasksRepo.listUpcoming(db, today, 7);
     const titles = list.map((t) => t.title).sort();
     expect(titles).toEqual(['3 dias', 'Hoje']);
+  });
+
+  it('toDateKey/fromDateKey: roundtrip preserva ano/mes/dia', () => {
+    const samples: Date[] = [
+      new Date(2026, 0, 1),
+      new Date(2026, 11, 31),
+      new Date(2024, 1, 29),
+      new Date(2026, 5, 7),
+    ];
+    for (const d of samples) {
+      const key = tasksRepo.toDateKey(d);
+      const back = tasksRepo.fromDateKey(key);
+      expect(key).toBe(d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate());
+      expect(back.getFullYear()).toBe(d.getFullYear());
+      expect(back.getMonth()).toBe(d.getMonth());
+      expect(back.getDate()).toBe(d.getDate());
+    }
   });
 
   it('toggleComplete: marca completedAt e muda status', async () => {

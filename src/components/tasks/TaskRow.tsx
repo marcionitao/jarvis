@@ -10,19 +10,19 @@ import { useI18n } from '@/state/i18n.context';
 import { useToggleComplete } from '@/hooks/use-task-mutations';
 import type { TaskDTO } from '@/repositories/tasks.repo';
 import { getPriorityColor, getPriorityLabel, type Priority } from '@/lib/format/priority';
-import { formatSmartDate } from '@/lib/format/date';
+import { formatSmartDate, formatRelative } from '@/lib/format/date';
+import { fromDateKey, toDateKey } from '@/repositories/tasks.repo';
 import { dateColors } from '@/styles/theme';
 import { cn } from '@/lib/cn';
 
-function todayEpoch(): number {
-  const d = new Date();
-  return Math.floor(new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() / 86400000);
+function todayKey(): number {
+  return toDateKey(new Date());
 }
 
-function dateColorFor(epochDay: number): string {
-  const t = todayEpoch();
-  if (epochDay === t) return dateColors.today;
-  if (epochDay === t + 1) return dateColors.tomorrow;
+function dateColorFor(dayKey: number): string {
+  const t = todayKey();
+  if (dayKey === t) return dateColors.today;
+  if (dayKey === t + 1) return dateColors.tomorrow;
   return dateColors.other;
 }
 
@@ -32,7 +32,7 @@ export interface TaskRowProps {
 
 export function TaskRow({ task }: TaskRowProps) {
   const { colors } = useTheme();
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
   const toggle = useToggleComplete();
 
   const isDone = task.status === 'done';
@@ -40,7 +40,7 @@ export function TaskRow({ task }: TaskRowProps) {
   const hasPriority = priority >= 1 && priority <= 4;
   const dateColor = task.dueDate ? dateColorFor(task.dueDate) : null;
   const dateLabel = task.dueDate
-    ? formatSmartDate(new Date(task.dueDate * 86400000), locale)
+    ? formatSmartDate(fromDateKey(task.dueDate), locale)
     : null;
 
   const handleToggle = () => {
@@ -68,8 +68,18 @@ export function TaskRow({ task }: TaskRowProps) {
           >
             {task.title}
           </Text>
-          {(hasPriority || dateLabel) && (
+          {(hasPriority || dateLabel || (isDone && task.completedAt)) && (
             <View className="flex-row items-center gap-2 flex-wrap mt-1">
+              {isDone && task.completedAt && (
+                <View className="flex-row items-center gap-1">
+                  <Icon name="checkmark-circle" size={14} color={colors.mutedForeground} />
+                  <Text variant="caption" style={{ color: colors.mutedForeground }}>
+                    {t('task.completedAt', {
+                      time: formatRelative(new Date(task.completedAt), locale),
+                    })}
+                  </Text>
+                </View>
+              )}
               {hasPriority && (
                 <View
                   className="px-2 py-0.5 rounded-full"

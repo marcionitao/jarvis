@@ -1,17 +1,27 @@
 // src/hooks/use-tasks.ts
 // Hooks de query para tarefas. Todos partilham a base useQuery.
 
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import * as tasksRepo from '@/repositories/tasks.repo';
 import type { TaskDTO } from '@/repositories/tasks.repo';
 import { useQuery, type QueryState } from './use-query';
+import { useUIPrefs } from '@/state/ui-prefs.context';
 
 export function useTodayTasks(): QueryState<TaskDTO[]> {
+  const { showCompleted } = useUIPrefs();
   const fetcher = useCallback(
-    (db: Parameters<typeof tasksRepo.listToday>[0]) => tasksRepo.listToday(db),
-    []
+    (db: Parameters<typeof tasksRepo.listToday>[0]) =>
+      tasksRepo.listToday(db, new Date(), showCompleted),
+    [showCompleted]
   );
-  return useQuery<TaskDTO[]>(fetcher, ['tasks:changed']);
+  const query = useQuery<TaskDTO[]>(fetcher, ['tasks:changed']);
+  const { refresh } = query;
+
+  useEffect(() => {
+    void refresh();
+  }, [showCompleted, refresh]);
+
+  return query;
 }
 
 export function useUpcomingTasks(days: number = 7): QueryState<TaskDTO[]> {

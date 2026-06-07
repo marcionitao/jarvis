@@ -3,7 +3,7 @@
 // Suporta: !p1..4 (priority), #nome (project), @nome (label), hoje/amanhã (date).
 // Locale-agnostic para palavras-chave (suporta pt e en).
 
-import { addDays, startOfDay } from 'date-fns';
+import { addDays } from 'date-fns';
 
 export interface QuickAddParsed {
   title: string;
@@ -19,8 +19,8 @@ const LABEL_REGEX = /@([\p{L}\p{N}_-]+)/giu;
 const KEYWORD_TODAY = /(?:^|\W)(hoje|today)(?=\W|$)/iu;
 const KEYWORD_TOMORROW = /(?:^|\W)(amanh[ãa]|tomorrow)(?=\W|$)/iu;
 
-function epochDay(date: Date): number {
-  return Math.floor(startOfDay(date).getTime() / 86400000);
+function toDateKey(date: Date): number {
+  return date.getFullYear() * 10000 + (date.getMonth() + 1) * 100 + date.getDate();
 }
 
 function strip(text: string, regex: RegExp): string {
@@ -53,10 +53,10 @@ export function parseQuickAdd(input: string): QuickAddParsed {
   }
 
   if (KEYWORD_TODAY.test(working)) {
-    dueDate = epochDay(new Date());
+    dueDate = toDateKey(new Date());
     working = strip(working, KEYWORD_TODAY);
   } else if (KEYWORD_TOMORROW.test(working)) {
-    dueDate = epochDay(addDays(new Date(), 1));
+    dueDate = toDateKey(addDays(new Date(), 1));
     working = strip(working, KEYWORD_TOMORROW);
   }
 

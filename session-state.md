@@ -250,6 +250,7 @@ npm run android         # dev build + emulador Android (requer SDK)
 | `expo prebuild --clean` falha com `ENOENT .../android-icon-foreground.png` se `app.json` `android.adaptiveIcon.foregroundImage/backgroundImage/monochromeImage` apontam para PNGs inexistentes em `assets/images/`. Cache previa mascarava o erro. | Garantir que **todos** os PNGs referenciados em `app.json` `android.adaptiveIcon` existem em `assets/images/`. Se só temos um icon, copiar (ex: `cp assets/images/adaptive-icon.png assets/images/android-icon-foreground.png` para os 3 nomes). Ver §16 (Fase 1). |
 | `react-hooks/immutability` (React 19 Compiler) rejeita `scale.value = withTiming(...)` no Reanimated, reportando "This value cannot be modified" | Adicionar `'react-hooks/immutability': 'off'` em `eslint.config.js` (alinhado com `purity`/`refs`/`set-state-in-effect` que já estão off). O `.value` de `useSharedValue` É para ser mutado — é o contract da Reanimated. Ver §16 (Fase 2). |
 | Modais em route groups (`src/app/(modals)/_layout.tsx` com Stack aninhada `presentation: 'modal'`) causam comportamento imprevisível no Android (freeze, touch events bloqueados) | **Padrão oficial Expo Router:** modais vão em `src/app/<name>.tsx` (root-level), com `<Stack.Screen name="<name>" options={{ presentation: 'modal' }} />` no root Stack. **NÃO** usar groups para modais. Ver §16 (reversão da Fase 3). |
+| `dueDate` em SQLite como `epochDay` (`Math.floor(local_midnight_ts / 86400000)`) é **timezone-dependente**: Berlin 2026-06-07 → 20610 (floor de 20610.916) → display `new Date(20610 * 86400000)` = 2026-06-06 22:00 UTC = dia local ANTERIOR. Bug off-by-1 em qualquer timezone ≠ UTC. | **Fix:** armazenar como `YYYYMMDD` integer (ex: `20260607`) — timezone-indep, comparável, sem perda no roundtrip. Helpers `toDateKey(date)` (= `year*10000 + (month+1)*100 + day`) e `fromDateKey(key)` (= `new Date(floor(key/10000), floor(key/100)%100-1, key%100)`). Migration 0001 converte dados existentes com `strftime(..., 'localtime', '+1 day')` para compensar o off-by-1 (assume mesmo timezone na criação e na migração). Ver §17 (fix timezone). |
 
 ---
 
@@ -603,7 +604,7 @@ O `tabBarButton` **NÃO existe** no `@bottom-tabs/react-navigation` (native). O 
 
 ## 16. Etapa 1.7 — Bottom Tabs + FAB (JS tabs, padrão barmittel)
 
-> **Status:** 🟢 Fases 1, 2, 3, 4 concluídas + reversão + smoke test runtime PASSOU · ⏳ Aguardando decisão sobre próxima etapa (1.8 ou 2.x)
+> **Status:** 🟢 1.7 + 1.7b concluídos · ⏳ Aguardando smoke test runtime do 1.7b no emulador
 
 ### 16.1 Objectivo
 Implementar navegação por tabs (Hoje, Agenda, +, Pesquisar, Projetos) com o "+" como tab fantasma central (raised, abre Quick Add modal). Tap = Quick Add, long press = placeholder "Em breve" (reservado para futura IA). Validar o padrão `tabBarButton` com `onPress` + `onLongPress` + Reanimated scale.
@@ -732,4 +733,110 @@ Implementar navegação por tabs (Hoje, Agenda, +, Pesquisar, Projetos) com o "+
 - **Reanimated worklets** no gesture handler: a escala 0.94 é só visual (não layout-affecting), deve correr no UI thread sem warning.
 - **Native tabs foram removidos da app.json** mas o `react-native-bottom-tabs` continua em `node_modules/` até `npm install`. Limpar para evitar autolinking residual.
 
-> Última actualização: Fase 5 (smoke test runtime) concluída — 9/10 itens OK. ✅ Modal não congela após reversão. Tap-to-complete funciona (filtro `useTodayTasks` exclui `done`). DB persiste em `/data/data/com.marcionitao.jarvis/files/SQLite/jarvis.db` (96KB). A aguardar decisão sobre próxima etapa.
+> Última actualização: 1.7b implementado (toggle "Mostrar concluídas" + subtítulo "Concluída há X" + persistência AsyncStorage). tsc/eslint OK · 68/68 testes (66+2 novos). A aguardar smoke test runtime.
+
+---
+
+## 17. Etapa 1.7b — Toggle "Mostrar concluídas" (Etapa 1.7b)
+
+> **Status:** 🟢 Implementação completa · ⏳ Aguardando smoke test runtime
+
+### 17.1 Objectivo
+Adicionar toggle no header de "Hoje" para mostrar/esconder tarefas com `status='done'`. Estado persiste em AsyncStorage. Tarefas concluídas mostram subtítulo "Concluída há X" (formato `formatRelative`).
+
+### 17.2 Ficheiros criados/modificados
+| Ficheiro | Tipo | Conteúdo |
+|----------|------|----------|
+| `src/state/ui-prefs.context.tsx` | NOVO | Context para `showCompleted` + persistência AsyncStorage `@jarvis/ui-prefs:v1` |
+| `src/app/_layout.tsx` | EDIT | Wrap `<UIPrefsProvider>` à volta de `<ThemedStack>` (dentro de `<NotificationsProvider>`) |
+| `src/repositories/tasks.repo.ts` | EDIT | `listToday(db, today?, includeCompleted = false)` — novo parâmetro |
+| `src/hooks/use-tasks.ts` | EDIT | `useTodayTasks` lê `useUIPrefs().showCompleted` + `useEffect` que chama `refresh()` quando toggle muda |
+| `src/components/tasks/TaskRow.tsx` | EDIT | Sub-row mostra "Concluída há {time}" com ícone `checkmark-circle` para tarefas done |
+| `src/app/(tabs)/index.tsx` | EDIT | Header agora tem `flex-row justify-between` + `<Pressable>` com `<Icon name="eye"\|"eye-off">` |
+| `src/i18n/pt.json` + `en.json` | EDIT | Novas keys: `task.completedAt`, `today.showCompleted`, `today.hideCompleted` |
+| `src/repositories/tasks.repo.test.ts` | EDIT | +2 testes: `listToday(includeCompleted=true)` devolve done, default exclui done |
+
+### 17.3 Como funciona
+1. User tap no ícone 👁/👁‍🗨 no header → `toggleShowCompleted()` em `ui-prefs.context`
+2. Context persiste `showCompleted` em AsyncStorage (`@jarvis/ui-prefs:v1`) + atualiza state local
+3. `useTodayTasks` re-cria o fetcher (dep: `[showCompleted]`)
+4. `useEffect([showCompleted, refresh])` chama `refresh()` → lista refresca
+5. Repo `listToday(db, new Date(), true)` agora devolve também status='done'
+6. TaskRow para done tasks: `opacity-60` + `line-through` (já existia) **+** subtítulo "Concluída há 5m"
+
+### 17.4 Validação esperada
+- tsc OK · eslint OK · 68/68 testes (66 prior + 2 novos) · smoke test runtime pendente
+
+### 17.5 Smoke test checklist (10 itens)
+1. ✅ Tap no ícone `eye-off` → tarefas concluídas reaparecem na lista
+2. ✅ Tarefas done mostram `opacity-60` + strikethrough + "Concluída há Xm"
+3. ✅ Tap no ícone `eye` → tarefas concluídas escondem-se novamente
+4. ✅ Tap no checkbox de uma tarefa done → vira todo, sai da lista (se toggle off)
+5. ✅ Tap no checkbox de uma tarefa todo → vira done, fica visível (se toggle on) / sai (se off)
+6. ✅ Estado do toggle persiste após kill + reabrir app
+7. ✅ Mudar de tab "Hoje" → "Agenda" → voltar "Hoje" → toggle mantém-se
+8. ✅ Toggle "off" + criar tarefa nova → aparece na lista imediatamente
+9. ✅ Toggle "on" + sem concluídas → empty state aparece
+10. ✅ Idioma pt-PT: "Concluída há 5 minutos" / en-US: "Completed 5 minutes ago"
+
+### 17.6 Notas técnicas
+- **`completedAt` está em milissegundos** (não epoch days) — confirmado no `update` do repo (`Date.now()`).
+- **Reanimated worklet rule desactivada em §7 #11** — não relacionada, mas aplicável.
+- **`useQuery` API limitation:** `events: EventName[]` é só para event bus, não para cache key. Para re-fetch por mudança de prefs, uso `useEffect` separado que chama `refresh()`.
+- **React Compiler purity:** extrair `refresh` para local var evita o warning `react-hooks/exhaustive-deps` (a `query` object é re-criada em cada render, o que causaria loop).
+- **Ícones:** usei `eye`/`eye-off` (filled) em vez de `eye-outline`/`eye-off-outline` (outline) — mais standard no Ionicons v15, sem risco de fallback.
+
+---
+
+## 18. Etapa 1.7c — Fix timezone `dueDate` (off-by-1)
+
+### 18.1 Diagnóstico
+- `dueDate` estava armazenado como `epochDay` (integer) = `Math.floor(new Date(year, month, day).getTime() / 86400000)`.
+- Em Berlin (CEST = UTC+2), 2026-06-07 00:00 local = 2026-06-06 22:00 UTC = timestamp 1780783200000.
+- `1780783200000 / 86400000 = 20610.916...`, `floor = 20610`.
+- Display via `new Date(20610 * 86400000) = new Date(2026-06-06 00:00 UTC) = 2026-06-06 02:00 Berlin`.
+- Cor: `dateColorFor(20610)` vs `todayEpoch=20610` → "Hoje" ✓. **Display string:** `formatSmartDate(2026-06-06, now)` → "Ontem" ❌.
+- Bug: o **label** era correcto mas o **display** estava off-by-1. Em UTC puro (sem offset) não acontecia.
+
+### 18.2 Solução
+- Mudar representação de `epochDay` (timezone-dep) → **YYYYMMDD** (timezone-indep).
+- Comparação `task.dueDate === todayKey()` agora funciona em qualquer timezone.
+- Display `formatSmartDate(fromDateKey(task.dueDate), locale)` é timezone-stable (cria `new Date(year, month, day)` — sempre o dia local pretendido).
+
+### 18.3 Helpers
+```ts
+// src/repositories/tasks.repo.ts
+export function toDateKey(date: Date): number {
+  return date.getFullYear() * 10000 + (date.getMonth() + 1) * 100 + date.getDate();
+}
+export function fromDateKey(key: number): Date {
+  const y = Math.floor(key / 10000);
+  const m = Math.floor((key % 10000) / 100) - 1;
+  const d = key % 100;
+  return new Date(y, m, d);
+}
+```
+- `startOfDayKey(date)` = `toDateKey(date)`.
+- `endOfDayKey(date)` = última key do dia (não usado actualmente — `listToday` usa `WHERE due_date <= endOfDayKey`).
+
+### 18.4 Ficheiros modificados
+| Ficheiro | Alteração |
+|----------|-----------|
+| `src/db/migrations/0001_convert_due_date_to_yyyymmdd.sql` | NOVO. `UPDATE tasks SET due_date = CAST(strftime('%Y%m%d', due_date * 86400000, 'unixepoch', 'localtime', '+1 day') AS INTEGER) WHERE due_date IS NOT NULL;` (best-effort, +1 day compensa off-by-1) |
+| `src/db/migrations/meta/_journal.json` | Adicionado entry `{ idx: 1, tag: '0001_convert_due_date_to_yyyymmdd', breakpoints: true }` |
+| `src/db/migrations/migrations.ts` | Importa `m0000` + `m0001` |
+| `src/services/quick-capture.service.ts` | `epochDay` → `toDateKey(date)` |
+| `src/repositories/tasks.repo.ts` | Helpers `toDateKey`/`fromDateKey` exportados. `startOfDayKey`/`endOfDayKey`. `listToday`/`listUpcoming` usam `dayKey` |
+| `src/components/tasks/TaskRow.tsx` | `dateColorFor(dayKey)` e `formatSmartDate(fromDateKey(task.dueDate), locale)` |
+| `src/repositories/tasks.repo.test.ts` | Fixtures: `todayKey = tasksRepo.toDateKey(today)`; `addDays` da `date-fns` para yest/tomorrow; novo teste `toDateKey/fromDateKey roundtrip` |
+
+### 18.5 Validação esperada
+- tsc OK · eslint OK · 69/69 testes (68 prior + 1 novo roundtrip) ✅ **alcançado**
+- Smoke test runtime (utilizador): criar tarefa "hoje" → "Hoje" (não "Ontem"); "amanhã" → "Amanhã" ✓
+
+### 18.6 Notas técnicas / Riscos
+- **Migration best-effort:** assume mesmo timezone na criação e na migração. Se user mudou de timezone entre criação e migração, datas podem ficar erradas. Mitigação: 1-2 tasks, user pode re-editar.
+- **Não recriar DB:** migration aplica em runtime na próxima abertura do app; dados existentes migram automaticamente.
+- **Faltou type-safety:** `dueDate: number` no schema Drizzle — sem `int` mode. Aceitável porque YYYYMMDD cabe em int32 e comparação é exacta.
+- **Storage gain:** 8 bytes (int) vs 4 (int) — mesmo tamanho, sem overhead.
+- **Performance:** todas as conversões são in-place no client; sem round-trip JS Date para comparar — comparação `===` é mais rápida que `isSameDay()`.
