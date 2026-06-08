@@ -41,5 +41,7 @@
   "agenda.title": "Agenda",
   "agenda.empty": "Sem tarefas neste mês",
   "agenda.noTasksForDate": "Sem tarefas para este dia",
-  "agenda.dayTasks": "Tarefas para {date}"
+  "agenda.dayTasks": "Tarefas para {date}",
+  "agenda.monthTasks": "Tarefas do mês",
+  "agenda.noDate": "Sem data"
 }

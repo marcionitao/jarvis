@@ -186,6 +186,8 @@ export function parseQuickAdd(input: string, now: Date = new Date()): QuickAddPa
         dueDate = toDateKey(parsed);
         const matchStr = m[0][0];
         const escaped = matchStr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        // Remove "em " / "in " prefixo se existir antes da data
+        working = working.replace(new RegExp(`\\b(em|in)\\s+${escaped.trim()}\\b`, 'iu'), '').replace(/\s+/g, ' ').trim();
         working = working.replace(new RegExp(escaped.trim(), 'g'), '').replace(/\s+/g, ' ').trim();
       }
     }
@@ -201,6 +203,8 @@ export function parseQuickAdd(input: string, now: Date = new Date()): QuickAddPa
       if (monthIndex >= 0 && day >= 1 && day <= 31) {
         const parsed = parseMonthDay(day, monthIndex, now);
         dueDate = toDateKey(parsed);
+        // Remove também "em " prefixo se existir
+        working = working.replace(new RegExp(`\\bem\\s+${m[0].replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'iu'), '').replace(/\s+/g, ' ').trim();
         working = strip(working, MONTH_RE_PT);
       }
     }
@@ -216,6 +220,8 @@ export function parseQuickAdd(input: string, now: Date = new Date()): QuickAddPa
       if (monthIndex >= 0 && day >= 1 && day <= 31) {
         const parsed = parseMonthDay(day, monthIndex, now);
         dueDate = toDateKey(parsed);
+        // Remove também "in " prefixo se existir
+        working = working.replace(new RegExp(`\\bin\\s+${m[0].replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'iu'), '').replace(/\s+/g, ' ').trim();
         working = strip(working, MONTH_RE_EN);
       }
     }
@@ -317,6 +323,9 @@ export function parseQuickAdd(input: string, now: Date = new Date()): QuickAddPa
       working = strip(working, timeMatch.stripPattern);
     }
   }
+
+  // Cleanup: remove "em" / "in" soltos deixados por datas (ex: "em 16 de junho" → "em" órfão)
+  working = working.replace(/\b(em|in)\b/gi, '').replace(/\s+/g, ' ').trim();
 
   return { title: working, priority, projectName, labelName, dueDate, dueTime };
 }

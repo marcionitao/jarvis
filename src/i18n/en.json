@@ -41,5 +41,7 @@
   "agenda.title": "Agenda",
   "agenda.empty": "No tasks this month",
   "agenda.noTasksForDate": "No tasks for this day",
-  "agenda.dayTasks": "Tasks for {date}"
+  "agenda.dayTasks": "Tasks for {date}",
+  "agenda.monthTasks": "Month tasks",
+  "agenda.noDate": "No date"
 }

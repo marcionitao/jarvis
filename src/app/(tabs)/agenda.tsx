@@ -142,6 +142,66 @@ export default function AgendaScreen() {
           enableSwipeMonths={true}
         />
 
+        {/* Tasks list for the month */}
+        {tasksForMonth && tasksForMonth.length > 0 && (
+          <View className="mt-6">
+            <RNText variant="h3" className="mb-3">
+              {t('agenda.monthTasks')}
+            </RNText>
+            <View className="space-y-3">
+              {(() => {
+                // Group tasks by date
+                const grouped: Record<string, typeof tasksForMonth> = {};
+                for (const task of tasksForMonth) {
+                  const key = task.dueDate?.toString() ?? 'sem-data';
+                  if (!grouped[key]) grouped[key] = [];
+                  grouped[key].push(task);
+                }
+                return Object.entries(grouped).map(([dateKey, tasks]) => (
+                  <View key={dateKey} className="space-y-2">
+                    <RNText variant="caption" className="text-muted-foreground mb-1">
+                      {(() => {
+                        if (dateKey === 'sem-data') return t('agenda.noDate');
+                        const d = dateKey.slice(6, 8);
+                        const m = dateKey.slice(4, 6);
+                        return `${d}/${m}`;
+                      })()}
+                    </RNText>
+                    {tasks.map((task: typeof tasksForMonth[0]) => (
+                      <View key={task.id} className="p-3 bg-white rounded-lg border border-gray-200 flex-row items-center justify-between gap-3">
+                        <View className="flex-1 min-w-0">
+                          <RNText variant="body" className="font-medium truncate">{task.title}</RNText>
+                          <View className="flex-row items-center gap-2 mt-1">
+                            {task.priority > 0 && (
+                              <View className="h-2 w-2 bg-primary-500 rounded-full" />
+                            )}
+                            {task.projectName && (
+                              <RNText variant="caption" className="text-muted-foreground">
+                                #{task.projectName}
+                              </RNText>
+                            )}
+                          </View>
+                        </View>
+                        {task.dueTime !== null && (
+                          <View className="text-right flex-shrink-0">
+                            <RNText variant="caption" className="text-muted-foreground">
+                              {(() => {
+                                const h = Math.floor(task.dueTime! / 60);
+                                const m = task.dueTime! % 60;
+                                return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+                              })()}
+                            </RNText>
+                          </View>
+                        )}
+                      </View>
+                    ))}
+                  </View>
+                ));
+              })()}
+            </View>
+          </View>
+        )}
+
         {/* Selected Date Tasks Modal/Panel */}
         {selectedDate && (
           <Modal
