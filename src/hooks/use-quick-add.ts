@@ -57,6 +57,7 @@ export function useQuickAdd() {
       priority: parsed.priority,
       projectId,
       dueDate: parsed.dueDate,
+      dueTime: parsed.dueTime,
     });
 
     if (parsed.labelName) {

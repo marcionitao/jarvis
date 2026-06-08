@@ -9,6 +9,7 @@ export const quickAddParsedSchema = z.object({
   projectName: z.string().nullable(),
   labelName: z.string().nullable(),
   dueDate: z.number().int().nullable(),
+  dueTime: z.number().int().min(0).max(1439).nullable(),
 });
 
 export type QuickAddParsedInput = z.infer<typeof quickAddParsedSchema>;

@@ -251,6 +251,7 @@ npm run android         # dev build + emulador Android (requer SDK)
 | `react-hooks/immutability` (React 19 Compiler) rejeita `scale.value = withTiming(...)` no Reanimated, reportando "This value cannot be modified" | Adicionar `'react-hooks/immutability': 'off'` em `eslint.config.js` (alinhado com `purity`/`refs`/`set-state-in-effect` que já estão off). O `.value` de `useSharedValue` É para ser mutado — é o contract da Reanimated. Ver §16 (Fase 2). |
 | Modais em route groups (`src/app/(modals)/_layout.tsx` com Stack aninhada `presentation: 'modal'`) causam comportamento imprevisível no Android (freeze, touch events bloqueados) | **Padrão oficial Expo Router:** modais vão em `src/app/<name>.tsx` (root-level), com `<Stack.Screen name="<name>" options={{ presentation: 'modal' }} />` no root Stack. **NÃO** usar groups para modais. Ver §16 (reversão da Fase 3). |
 | `dueDate` em SQLite como `epochDay` (`Math.floor(local_midnight_ts / 86400000)`) é **timezone-dependente**: Berlin 2026-06-07 → 20610 (floor de 20610.916) → display `new Date(20610 * 86400000)` = 2026-06-06 22:00 UTC = dia local ANTERIOR. Bug off-by-1 em qualquer timezone ≠ UTC. | **Fix:** armazenar como `YYYYMMDD` integer (ex: `20260607`) — timezone-indep, comparável, sem perda no roundtrip. Helpers `toDateKey(date)` (= `year*10000 + (month+1)*100 + day`) e `fromDateKey(key)` (= `new Date(floor(key/10000), floor(key/100)%100-1, key%100)`). Migration 0001 converte dados existentes com `strftime(..., 'localtime', '+1 day')` para compensar o off-by-1 (assume mesmo timezone na criação e na migração). Ver §17 (fix timezone). |
+| `"mês".toLowerCase()` em JS mantém o cedilha (`"mês"` ≠ `"mes"`). `startsWith("mes")` é `false` para `"mês"`. Mesmo problema com `ã`/`õ`/`ç` em outras palavras pt. | Normalizar manualmente: `.toLowerCase().replace(/[ê]/g, 'e')` antes do `startsWith`. Ou usar `localeCompare` com `{ sensitivity: 'base' }`. Ver §19 (Quick Add parser v2). |
 
 ---
 
@@ -840,3 +841,68 @@ export function fromDateKey(key: number): Date {
 - **Faltou type-safety:** `dueDate: number` no schema Drizzle — sem `int` mode. Aceitável porque YYYYMMDD cabe em int32 e comparação é exacta.
 - **Storage gain:** 8 bytes (int) vs 4 (int) — mesmo tamanho, sem overhead.
 - **Performance:** todas as conversões são in-place no client; sem round-trip JS Date para comparar — comparação `===` é mais rápida que `isSameDay()`.
+
+---
+
+## 19. Etapa 1.8 — Quick Add Parser v2 (NL date/time + default=hoje)
+
+### 19.1 Problema
+- Parser original (v1) só reconhecia `hoje`/`amanhã` (pt/en). Tudo o resto caía em `dueDate=null`.
+- Tarefas com `dueDate=null` **não aparecem** na aba "Hoje" (filtro `WHERE due_date <= todayKey`), parecendo "não adicionadas".
+- Spec §10.2 (etapa 1.6) diz "Criar tarefa via FAB → aparece em **Hoje**" — violado pela impl.
+- `analise-do-produto.md` §5 declara o parser como "**NL parser local (stub para futuro)**" — melhorado aqui.
+
+### 19.2 Solução
+- **Default = hoje** quando nenhuma keyword de data é detectada.
+- **NL date parser** (regex pt/en, zero deps):
+  - Absoluta: `dd/mm`, `dd-mm`, `dd.mm`, com ou sem ano `.yyyy`
+  - "d de mês" (pt) / "month d" (en) — meses completos
+  - Relativa: `em N dias/semanas/meses` (pt) / `in N days/weeks/months` (en) — aceita numerais E palavras (`uma`, `duas`, `a`, `an`, `two`, `three`)
+  - Weekday: `próxima <dia>` (pt) / `next <day>` (en) — salta para o próximo ≥ hoje
+- **Time parser** (devolve `dueTime` em minutos-desde-meia-noite):
+  - `HHh`, `HHhs` (com sufixo)
+  - `HH:MM`
+  - `às HH` / `as HH` (pt, prefixo obrigatório, sem h)
+  - `at HH` (en, prefixo obrigatório, sem h)
+- BARE regex (sem h, sem colon) **só dispara com prefixo** `às`/`as`/`at` para não fazer match acidental em "10 coisas".
+
+### 19.3 Ficheiros modificados
+| Ficheiro | Alteração |
+|----------|-----------|
+| `src/services/quick-capture.service.ts` | Reescrita. Adiciona `dueTime`, default=hoje, NL date/time regex pt/en. |
+| `src/services/quick-capture.service.test.ts` | NOVO. 20 testes cobrindo: default, keywords, dd/mm, "d de mês" pt/en, relativas pt/en, weekdays pt/en, horas com/sem h, caso combinado do user ("Levar o carro a oficina no dia 10 de junho as 10hs"). |
+| `src/schemas/task.schema.ts` | Adiciona `dueTime: z.number().int().min(0).max(1439).nullable()`. |
+| `src/hooks/use-quick-add.ts` | Passa `dueTime` para `tasksRepo.create`. |
+| `src/i18n/pt.json` + `en.json` | Hint actualizada: `"!p1 amanhã 10h @etiqueta"`. |
+| `src/repositories/tasks.repo.ts` | Sem mudança — `dueTime` já era aceite. |
+
+### 19.4 Validação
+- tsc OK · eslint OK · 89/89 testes (69 prior + 20 novos) ✅
+
+### 19.5 Casos cobertos (exemplos)
+| Input | Resultado |
+|-------|-----------|
+| `"Vou buscar a Ana"` | `title="Vou buscar a Ana"`, `dueDate=hoje` |
+| `"Comprar leite hoje"` | `title="Comprar leite"`, `dueDate=hoje` |
+| `"Buscar pão amanhã"` | `title="Buscar pão"`, `dueDate=amanhã` |
+| `"Levar o carro 10/06"` | `title="Levar o carro"`, `dueDate=20260610` |
+| `"Levar o carro 10 de junho"` | `title="Levar o carro"`, `dueDate=20260610` |
+| `"Levar o carro a oficina no dia 10 de junho as 10hs"` | `title="..."`, `dueDate=20260610`, `dueTime=600` |
+| `"Dentista em 1 mês"` | `dueDate=2026-07-07` |
+| `"Estudar em 5 dias"` | `dueDate=+5 dias` |
+| `"Reunião próxima sexta"` | `dueDate=próxima sexta` (≥1 dia) |
+| `"Standup next monday"` | `dueDate=próxima segunda` |
+| `"Almoço às 14"` | `title="Almoço"`, `dueTime=840` |
+| `"Call at 3"` | `title="Call"`, `dueTime=180` |
+| `"Reunião 10:30"` | `title="Reunião"`, `dueTime=630` |
+| `"Reunião !p2 #trabalho @importante amanhã"` | tudo separado, `dueDate=amanhã` |
+
+### 19.6 Notas técnicas / Pegadinhas
+- **"mês".toLowerCase() mantém cedilha** — `"mês".startsWith("mes")` é `false`. Solução: `.replace(/[ê]/g, 'e')` antes do `startsWith`. Ver pegadinha #14.
+- **Relativa com palavras:** `em uma semana` (não "1 semana") funciona via `wordToNum`. Cobre pt (`uma`, `um`, `duas`, `dois`) e en (`a`, `an`, `two`, `three`). Acima de 3 não suporta (raro).
+- **Weekday sem "próxima":** salta para o próximo ≥ hoje. `"sexta"` num domingo = próxima sexta. Aceitável.
+- **Year rollover:** "10/06" se a data já passou este ano → próximo ano. `addMonths`/`addWeeks`/`addDays` do `date-fns` lidam com transições.
+- **Time BARE regex limitation:** "às 10" OK; "10 horas" (sem h, sem prefixo) **NÃO** é capturado. Se for preciso, adicionar.
+- **dueTime guardado mas não display:** schema aceita, parser produz, hook passa, repo grava. UI (TaskRow) ainda não mostra hora. Próxima etapa: TaskRow + notification scheduling.
+- **Performance:** 20 regexes por tarefa criada. ~0.1ms no V8. Não é bottleneck.
+- **Default=hoje trade-off:** user que escreve "limpar a garagem" sem data pretendida vai para "Hoje". Workaround futuro: prefixo `!nodate` (não implementado) ou filtro de "Sem data" na aba Inbox.
