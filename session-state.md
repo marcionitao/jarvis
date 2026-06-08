@@ -102,11 +102,18 @@ Implementar a tela "Agenda" que exibe um calendário mensal com pontos nos dias 
 - Adicionado método `listByDate` ao `tasks.repo.ts` para buscar tarefas por data específica
 - Criado hook `use-tasks-for-date.ts` para consumir o novo método do repositório
 - Implementada tela `src/app/(tabs)/agenda.tsx` com `react-native-calendars`:
-  - Calendário mensal com navegação entre meses
-  - Marcação de dias que possuem tarefas
+  - Calendário mensal com navegação entre meses (setas + swipe)
+  - Marcação de dias com tarefas (pontos vermelhos via `dotColor`)
   - Modal mostrando tarefas do dia selecionado
+  - **Lista de tarefas do mês abaixo do calendário**, agrupadas por data
   - Suporte a eventos de toque em dias para ver tarefas
-- Atualizado `src/hooks/index.ts` para exportar o novo hook
+- Hook `use-tasks-for-month.ts` para buscar tarefas do mês visível
+- Hook `useQuery` estendido com parâmetro `key` para invalidar cache por dependências
+- Parser Quick Add melhorado:
+  - Remove "em"/"in" prefixos de datas (ex: "em 16 de junho" → título limpo)
+  - Limpeza final remove "em"/"in" órfãos
+- `TaskRow` mostra hora (`dueTime`) com ícone de relógio ao lado da data
+- Atualizado `src/hooks/index.ts` para exportar novos hooks
 - Atualizados arquivos de i18n (pt.json e en.json) com chaves para a agenda
 - Adicionado teste para o novo método `listByDate` em `tasks.repo.test.ts`
 - Adicionada dependência `react-native-calendars` ao package.json
@@ -118,6 +125,48 @@ Implementar a tela "Agenda" que exibe um calendário mensal com pontos nos dias 
   2. Tap no dia com tarefa → modal mostra a tarefa
   3. Tap em dia sem tarefa → mostra mensagem "Sem tarefas para este dia"
   4. Navegar entre meses com as setas → calendario atualiza corretamente
-  5. Persistência confirmada: tarefas permanecem após reload da app
+  5. **Lista de tarefas do mês aparece abaixo do calendário, agrupadas por data**
+  6. **Parser Quick Add limpa "em"/"in" (ex: "em 16 de junho" → título limpo)**
+  7. **TaskRow mostra hora (ex: "Hoje ⏰ 10:00")**
+  8. Persistência confirmada: tarefas permanecem após reload da app
+
+---
+
+## 19. Próximas fases sugeridas
+
+| Fase | Descrição | Prioridade |
+|------|-----------|------------|
+| **1.9** | **Pesquisar** — Search bar + filtros (projeto, prioridade, data, etiqueta) + full-text | Alta |
+| **2.0** | **Detalhe do Projeto** — CRUD projetos, lista tarefas do projeto, reordenar | Alta |
+| **2.1** | **Detalhe da Etiqueta** — Lista tarefas com etiqueta, editar etiqueta | Média |
+| **2.2** | **Configurações** — Tema, idioma, notificações, backup/export | Média |
+| **2.3** | **Sincronização cloud** — Placeholder (Supabase/Firebase) | Baixa |
+
+### 1.9 — Pesquisar (próxima)
+**Objetivo**: Tela de busca unificada com:
+- Search bar no topo (debounced, 300ms)
+- Filtros colapsáveis: projeto, prioridade, data (intervalo), etiqueta, status
+- Resultados em lista (reutiliza `TaskRow`)
+- Empty state com sugestões
+- Acesso via tab "Pesquisar" (já existe placeholder)
+
+**Ficheiros a criar/modificar**:
+- `src/app/(tabs)/search.tsx` — tela principal
+- `src/hooks/use-tasks-search.ts` — hook com filtros combinados
+- `src/repositories/tasks.repo.ts` — método `searchWithFilters(filters)`
+- `src/components/search/SearchFilters.tsx` — painel de filtros colapsável
+
+---
+
+## 20. Notas técnicas / Pegadinhas conhecidas (atualizado)
+
+| Pegadinha | Solução |
+|-----------|---------|
+| `useQuery` não refrescava quando parâmetros mudavam | Adicionado parâmetro `key` opcional; re-fetch automático quando `key` muda |
+| Parser deixava "em"/"in" no título | Limpeza final `\b(em|in)\b` case-insensitive no final do parser |
+| `react-native-calendars` espera chaves `YYYY-MM-DD` | Conversão `YYYYMMDD` → `YYYY-MM-DD` + prop `dotColor` |
+| `Modal` transparente + `formSheet` não funciona no Android | Removido `transparent={true}` |
+| `TaskRow` não mostrava `dueTime` | Adicionado `timeLabel` + ícone `time-outline` ao lado da data |
+| Hooks não invalidavam cache ao mudar filtros | `useQuery` agora aceita `key` para forçar refresh |
 
 ---

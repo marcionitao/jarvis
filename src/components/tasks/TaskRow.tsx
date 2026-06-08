@@ -42,6 +42,9 @@ export function TaskRow({ task }: TaskRowProps) {
   const dateLabel = task.dueDate
     ? formatSmartDate(fromDateKey(task.dueDate), locale)
     : null;
+  const timeLabel = task.dueTime !== null
+    ? `${Math.floor(task.dueTime / 60).toString().padStart(2, '0')}:${(task.dueTime % 60).toString().padStart(2, '0')}`
+    : null;
 
   const handleToggle = () => {
     void toggle.mutate(task.id, !isDone);
@@ -95,6 +98,13 @@ export function TaskRow({ task }: TaskRowProps) {
                   <Icon name="calendar-outline" size={14} color={dateColor} />
                   <Text variant="caption" style={{ color: dateColor }}>
                     {dateLabel}
+                    {timeLabel && (
+                      <>
+                        {' '}
+                        <Icon name="time-outline" size={14} color={dateColor} />
+                        {' '}{timeLabel}
+                      </>
+                    )}
                   </Text>
                 </View>
               )}
