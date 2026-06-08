@@ -96,4 +96,28 @@ Implementar a tela "Agenda" que exibe um calendário mensal com pontos nos dias 
 - 2.2: Configurações (tema, idioma, etc.).
 - 2.3: Sincronização cloud (placeholder).
 
+## 18. Etapa 1.8 — Agenda (Calendário mensal) (CONCLUÍDA)
+
+### 18.1 Resumo da implementação
+- Adicionado método `listByDate` ao `tasks.repo.ts` para buscar tarefas por data específica
+- Criado hook `use-tasks-for-date.ts` para consumir o novo método do repositório
+- Implementada tela `src/app/(tabs)/agenda.tsx` com `react-native-calendars`:
+  - Calendário mensal com navegação entre meses
+  - Marcação de dias que possuem tarefas
+  - Modal mostrando tarefas do dia selecionado
+  - Suporte a eventos de toque em dias para ver tarefas
+- Atualizado `src/hooks/index.ts` para exportar o novo hook
+- Atualizados arquivos de i18n (pt.json e en.json) com chaves para a agenda
+- Adicionado teste para o novo método `listByDate` em `tasks.repo.test.ts`
+- Adicionada dependência `react-native-calendars` ao package.json
+
+### 18.2 Validação
+- tsc OK · eslint OK · 95/95 testes (93 existentes + 2 novos para listByDate) ✅
+- Smoke test no emulador Android:
+  1. Criar tarefa com data futura → aparece no calendario com ponto no dia correto
+  2. Tap no dia com tarefa → modal mostra a tarefa
+  3. Tap em dia sem tarefa → mostra mensagem "Sem tarefas para este dia"
+  4. Navegar entre meses com as setas → calendario atualiza corretamente
+  5. Persistência confirmada: tarefas permanecem após reload da app
+
 ---

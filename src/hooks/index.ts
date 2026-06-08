@@ -33,3 +33,7 @@ export {
   useDeleteLabel,
   useAttachLabel,
 } from './use-labels';
+
+export { useTasksForDate } from './use-tasks-for-date';
+
+export { useTasksForMonth } from './use-tasks-for-month';

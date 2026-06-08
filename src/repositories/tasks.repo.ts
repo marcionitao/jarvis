@@ -88,6 +88,23 @@ export async function listUpcoming(
     .orderBy(asc(tasks.dueDate), asc(tasks.order));
 }
 
+export async function listByDate(
+  db: JarvisDB,
+  date: Date
+): Promise<TaskDTO[]> {
+  const dayKey = toDateKey(date);
+  return db
+    .select()
+    .from(tasks)
+    .where(
+      and(
+        eq(tasks.status, 'todo'),
+        eq(tasks.dueDate, dayKey)
+      )
+    )
+    .orderBy(asc(tasks.order));
+}
+
 export interface CreateTaskInput {
   title: string;
   description?: string | null;

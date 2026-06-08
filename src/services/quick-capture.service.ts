@@ -36,8 +36,8 @@ const DATE_ABSOLUTE = /(?:^|\W)(\d{1,2})[\/\-\.](\d{1,2})(?:\.(\d{2,4}))?(?=\W|$
 // "d de mês" (pt) ou "month d" (en) — nomes completos
 const MONTHS_PT = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 const MONTHS_EN = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
-const MONTH_RE_PT = new RegExp(`(?:^|\\W)(\\d{1,2})\\s+de\\s+(${MONTHS_PT.join('|')})(?=\\W|$)`, 'iu');
-const MONTH_RE_EN = new RegExp(`(?:^|\\W)(${MONTHS_EN.join('|')})\\s+(\\d{1,2})(?=\\W|$)`, 'iu');
+const MONTH_RE_PT = new RegExp(`(?:^|[\\s\\W])(\\d{1,2})\\s+de\\s+(${MONTHS_PT.join('|')})(?=[\\s\\W]|$)`, 'iu');
+const MONTH_RE_EN = new RegExp(`(?:^|[\\s\\W])(${MONTHS_EN.join('|')})\\s+(\\d{1,2})(?=[\\s\\W]|$)`, 'iu');
 // "em <mês>" (pt) / "in <month>" (en) — sem dia; usa dia 1 (mês corrente se ainda não passou, próximo ano se já)
 const MONTH_ONLY_PT = new RegExp(`(?:^|\\W)em\\s+(${MONTHS_PT.join('|')})(?=\\W|$)`, 'iu');
 const MONTH_ONLY_EN = new RegExp(`(?:^|\\W)in\\s+(${MONTHS_EN.join('|')})(?=\\W|$)`, 'iu');
@@ -56,9 +56,9 @@ const WEEKDAY_EN_RE = new RegExp(`(?:^|\\W)(next\\s+)?(${WEEKDAY_EN.join('|')})(
 // Time: "10h", "10hs", "10:30", "às 10", "as 10", "at 10", "às 14" (sem h)
 // Ordem de tentativa: BARE (com prefixo obrigatório) > COLON > H
 // BARE só dispara com prefixo "às"/"as"/"at", evitando match acidental em "10 coisas".
-const TIME_BARE = /(?:^|\W)(?:[aà]s\s+|at\s+)(\d{1,2})(?::(\d{2}))?(?=\W|$)/iu;
-const TIME_COLON = /(?:^|\W)(?:[aà]s?\s+|at\s+)?(\d{1,2}):(\d{2})(?=\W|$)/iu;
-const TIME_H = /(?:^|\W)(?:[aà]s?\s+|at\s+)?(\d{1,2})h(s)?(?=\W|$)/iu;
+const TIME_BARE = /(?:^|[\s\W])(?:[aà]s\s+|at\s+)(\d{1,2})(?::(\d{2}))?(?=[\s\W]|$)/iu;
+const TIME_COLON = /(?:^|[\s\W])(?:[aà]s?\s+|at\s+)?(\d{1,2}):(\d{2})(?=[\s\W]|$)/iu;
+const TIME_H = /(?:^|[\s\W])(?:[aà]s?\s+|at\s+)?(\d{1,2})h(s)?(?=[\s\W]|$)/iu;
 
 function toDateKey(date: Date): number {
   return date.getFullYear() * 10000 + (date.getMonth() + 1) * 100 + date.getDate();

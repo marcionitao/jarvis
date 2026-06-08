@@ -140,15 +140,41 @@ describe('tasks.repo', () => {
     expect(outbox[0].op).toBe('update');
   });
 
-  it('hardDelete: remove tarefa e enfileira delete', async () => {
-    ({ db, close } = createTestDB());
-    const task = await tasksRepo.create(db, { title: 'X' });
-    await outboxRepo.clearAll(db);
-    const ok = await tasksRepo.hardDelete(db, task.id);
-    expect(ok).toBe(true);
-    const after = await tasksRepo.getById(db, task.id);
-    expect(after).toBeNull();
-    const outbox = await outboxRepo.listAll(db);
-    expect(outbox[0].op).toBe('delete');
+    it('hardDelete: remove tarefa e enfileira delete', async () => {
+      ({ db, close } = createTestDB());
+      const task = await tasksRepo.create(db, { title: 'X' });
+      await outboxRepo.clearAll(db);
+      const ok = await tasksRepo.hardDelete(db, task.id);
+      expect(ok).toBe(true);
+      const after = await tasksRepo.getById(db, task.id);
+      expect(after).toBeNull();
+      const outbox = await outboxRepo.listAll(db);
+      expect(outbox[0].op).toBe('delete');
+    });
+
+    it('listByDate: devolve tarefas com dueDate igual ao dia especificado', async () => {
+      ({ db, close } = createTestDB());
+      const today = new Date();
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+
+      const taskToday = await tasksRepo.create(db, {
+        title: 'Hoje',
+        dueDate: tasksRepo.toDateKey(today),
+      });
+      const taskTomorrow = await tasksRepo.create(db, {
+        title: 'Amanhã',
+        dueDate: tasksRepo.toDateKey(tomorrow),
+      });
+      const taskYesterday = await tasksRepo.create(db, {
+        title: 'Ontem',
+        dueDate: tasksRepo.toDateKey(yesterday),
+      });
+
+      const tasks = await tasksRepo.listByDate(db, today);
+      expect(tasks).toHaveLength(1);
+      expect(tasks[0].title).toBe('Hoje');
+    });
   });
-});

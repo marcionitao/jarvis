@@ -38,5 +38,8 @@
   "theme.light": "Claro",
   "theme.dark": "Escuro",
   "theme.system": "Sistema",
-  "preview.title": "Pré-visualização do design system"
+  "agenda.title": "Agenda",
+  "agenda.empty": "Sem tarefas neste mês",
+  "agenda.noTasksForDate": "Sem tarefas para este dia",
+  "agenda.dayTasks": "Tarefas para {date}"
 }

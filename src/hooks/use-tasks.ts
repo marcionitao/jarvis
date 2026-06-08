@@ -14,14 +14,7 @@ export function useTodayTasks(): QueryState<TaskDTO[]> {
       tasksRepo.listToday(db, new Date(), showCompleted),
     [showCompleted]
   );
-  const query = useQuery<TaskDTO[]>(fetcher, ['tasks:changed']);
-  const { refresh } = query;
-
-  useEffect(() => {
-    void refresh();
-  }, [showCompleted, refresh]);
-
-  return query;
+  return useQuery<TaskDTO[]>(fetcher, ['tasks:changed'], showCompleted);
 }
 
 export function useUpcomingTasks(days: number = 7): QueryState<TaskDTO[]> {
@@ -30,7 +23,7 @@ export function useUpcomingTasks(days: number = 7): QueryState<TaskDTO[]> {
       tasksRepo.listUpcoming(db, new Date(), days),
     [days]
   );
-  return useQuery<TaskDTO[]>(fetcher, ['tasks:changed']);
+  return useQuery<TaskDTO[]>(fetcher, ['tasks:changed'], days);
 }
 
 export function useProjectTasks(projectId: string | null): QueryState<TaskDTO[]> {
@@ -39,7 +32,7 @@ export function useProjectTasks(projectId: string | null): QueryState<TaskDTO[]>
       tasksRepo.listByProject(db, projectId),
     [projectId]
   );
-  return useQuery<TaskDTO[]>(fetcher, ['tasks:changed']);
+  return useQuery<TaskDTO[]>(fetcher, ['tasks:changed'], projectId);
 }
 
 export function useTask(id: string | null): QueryState<TaskDTO | null> {
@@ -48,5 +41,5 @@ export function useTask(id: string | null): QueryState<TaskDTO | null> {
       id ? tasksRepo.getById(db, id) : null,
     [id]
   );
-  return useQuery<TaskDTO | null>(fetcher, ['tasks:changed']);
+  return useQuery<TaskDTO | null>(fetcher, ['tasks:changed'], id);
 }

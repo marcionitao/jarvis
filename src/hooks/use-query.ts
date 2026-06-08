@@ -20,7 +20,8 @@ export interface QueryState<T> {
 
 export function useQuery<T>(
   fetcher: (db: JarvisDB) => Promise<T>,
-  events: EventName[] = []
+  events: EventName[] = [],
+  key?: unknown
 ): QueryState<T> {
   const { db, ready } = useDB();
   const [data, setData] = useState<T | null>(null);
@@ -48,7 +49,7 @@ export function useQuery<T>(
     if (ready && db) {
       void refresh();
     }
-  }, [ready, db, refresh]);
+  }, [ready, db, refresh, key]);
 
   const eventsKey = events.join(',');
   useEffect(() => {

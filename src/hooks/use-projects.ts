@@ -13,7 +13,7 @@ export function useProjects(includeArchived: boolean = false): QueryState<Projec
       includeArchived ? projectsRepo.listAll(db) : projectsRepo.listActive(db),
     [includeArchived]
   );
-  return useQuery<ProjectDTO[]>(fetcher, ['projects:changed']);
+  return useQuery<ProjectDTO[]>(fetcher, ['projects:changed'], includeArchived);
 }
 
 export function useProject(id: string | null): QueryState<ProjectDTO | null> {
@@ -22,7 +22,7 @@ export function useProject(id: string | null): QueryState<ProjectDTO | null> {
       id ? projectsRepo.getById(db, id) : null,
     [id]
   );
-  return useQuery<ProjectDTO | null>(fetcher, ['projects:changed']);
+  return useQuery<ProjectDTO | null>(fetcher, ['projects:changed'], id);
 }
 
 export function useCreateProject() {
