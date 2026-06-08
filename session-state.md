@@ -132,10 +132,32 @@ Implementar a tela "Agenda" que exibe um calendário mensal com pontos nos dias 
 
 ---
 
-## 19. Próximas fases sugeridas
+## 19. Etapa 1.8b — Quick Add UX (Pickers visuais) (CONCLUÍDA)
+
+### 19.1 Objectivo
+Melhorar o Quick Add com pickers visuais. Pickers são overrides visuais — não injetam texto no input.
+
+### 19.2 Pickers implementados
+- **Priority picker** — 5 chips: Nenhum, P1, P2, P3, P4
+- **Date picker** — 4 botões: Não definir, Hoje, Amanhã, Escolher (Calendar modal)
+- **Label picker** — scroll horizontal de etiquetas existentes + botão "+ Nova"
+
+### 19.3 Bug corrigido
+Picker de data iniciava em 'today' e injetava "hoje" em tudo. Corrigido: `datePick` default é `'none'` e `buildSubmitText()` só injeta no momento do submit.
+
+### 19.4 Ficheiros modificados
+`src/app/quick-add.tsx` · `src/i18n/pt.json` · `src/i18n/en.json`
+
+### 19.5 Validação
+94 testes ✅ · i18n pt/en correto
+
+---
+
+## 20. Próximas fases sugeridas
 
 | Fase | Descrição | Prioridade |
 |------|-----------|------------|
+| **1.8b** | **Quick Add UX** — Pickers visuais (prioridade, data, etiquetas) | Alta |
 | **1.9** | **Pesquisar** — Search bar + filtros (projeto, prioridade, data, etiqueta) + full-text | Alta |
 | **2.0** | **Detalhe do Projeto** — CRUD projetos, lista tarefas do projeto, reordenar | Alta |
 | **2.1** | **Detalhe da Etiqueta** — Lista tarefas com etiqueta, editar etiqueta | Média |
