@@ -37,3 +37,8 @@ export {
 export { useTasksForDate } from './use-tasks-for-date';
 
 export { useTasksForMonth } from './use-tasks-for-month';
+
+export { useTasksSearch } from './use-tasks-search';
+export type { SearchFilters } from './use-tasks-search';
+
+export { useDebounce } from './use-debounce';

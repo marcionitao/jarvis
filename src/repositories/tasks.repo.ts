@@ -2,7 +2,7 @@
 // Repositório de tarefas. CRUD + queries comuns (Hoje, Por projeto, Por data).
 // Toda mutation enfileira evento na outbox (sync-ready).
 
-import { and, asc, desc, eq, gte, isNull, lte, or } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, isNull, lte, like, or, sql } from 'drizzle-orm';
 import { ulid } from 'ulid';
 import type { JarvisDB } from '@/db/client';
 import { tasks, type Task, type NewTask } from '@/db/schema';
@@ -27,6 +27,16 @@ function startOfDayKey(date: Date): number {
 
 function endOfDayKey(date: Date): number {
   return toDateKey(date);
+}
+
+export interface SearchFilters {
+  query?: string | null;
+  projectId?: string | null;
+  priority?: number | null;
+  labelId?: string | null;
+  dueDateFrom?: number | null;
+  dueDateTo?: number | null;
+  status?: 'todo' | 'done' | 'all';
 }
 
 export async function getById(db: JarvisDB, id: string): Promise<TaskDTO | null> {
@@ -201,21 +211,48 @@ export async function hardDelete(db: JarvisDB, id: string): Promise<boolean> {
   return true;
 }
 
-export async function search(db: JarvisDB, _query: string): Promise<TaskDTO[]> {
+export async function searchWithFilters(
+  db: JarvisDB,
+  filters: SearchFilters
+): Promise<TaskDTO[]> {
+  const conditions = [];
+
+  if (filters.query) {
+    const pattern = `%${filters.query.toLowerCase()}%`;
+    conditions.push(like(sql`lower(${tasks.title})`, pattern));
+  }
+
+  if (filters.projectId !== undefined) {
+    conditions.push(
+      filters.projectId === null
+        ? isNull(tasks.projectId)
+        : eq(tasks.projectId, filters.projectId)
+    );
+  }
+
+  if (filters.priority !== undefined && filters.priority > 0) {
+    conditions.push(eq(tasks.priority, filters.priority));
+  }
+
+  if (filters.status === 'todo') {
+    conditions.push(eq(tasks.status, 'todo'));
+  } else if (filters.status === 'done') {
+    conditions.push(eq(tasks.status, 'done'));
+  }
+
+  if (filters.dueDateFrom) {
+    conditions.push(gte(tasks.dueDate, filters.dueDateFrom));
+  }
+
+  if (filters.dueDateTo) {
+    conditions.push(lte(tasks.dueDate, filters.dueDateTo));
+  }
+
+  const where = conditions.length > 0 ? and(...conditions) : undefined;
   return db
     .select()
     .from(tasks)
+    .where(where)
     .orderBy(desc(tasks.clientUpdatedAt))
     .limit(100);
 }
-
-// TODO fase 2: substituir por FTS5 (full-text search).
-// export async function searchByText(db: JarvisDB, query: string): Promise<TaskDTO[]> {
-//   const pattern = `%${query.toLowerCase()}%`;
-//   return db
-//     .select()
-//     .from(tasks)
-//     .where(like(tasks.title, pattern))
-//     .orderBy(desc(tasks.clientUpdatedAt))
-//     .limit(100);
-// }

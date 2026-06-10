@@ -164,23 +164,80 @@ Picker de data iniciava em 'today' e injetava "hoje" em tudo. Corrigido: `datePi
 | **2.2** | **Configurações** — Tema, idioma, notificações, backup/export | Média |
 | **2.3** | **Sincronização cloud** — Placeholder (Supabase/Firebase) | Baixa |
 
-### 1.9 — Pesquisar (próxima)
-**Objetivo**: Tela de busca unificada com:
-- Search bar no topo (debounced, 300ms)
-- Filtros colapsáveis: projeto, prioridade, data (intervalo), etiqueta, status
-- Resultados em lista (reutiliza `TaskRow`)
-- Empty state com sugestões
-- Acesso via tab "Pesquisar" (já existe placeholder)
+### 1.9 — Pesquisar (CONCLUÍDA ✅)
 
-**Ficheiros a criar/modificar**:
-- `src/app/(tabs)/search.tsx` — tela principal
-- `src/hooks/use-tasks-search.ts` — hook com filtros combinados
-- `src/repositories/tasks.repo.ts` — método `searchWithFilters(filters)`
-- `src/components/search/SearchFilters.tsx` — painel de filtros colapsável
+### 1.9.1 Visão geral
+Tela de pesquisa unificada com search bar + filtros. Filtros são todos opcionais e combinam com AND. Search é `LIKE %query%` no título (FTS5 fica para fase 2.3).
+
+### 1.9.2 Ficheiros criados
+| Ficheiro | Conteúdo |
+|----------|----------|
+| `src/repositories/tasks.repo.ts` | `searchWithFilters(filters)` + interface `SearchFilters` |
+| `src/hooks/use-tasks-search.ts` | Hook com filters state + debounce 300ms |
+| `src/hooks/use-debounce.ts` | Hook utilitário de debounce genérico |
+| `src/components/search/SearchBar.tsx` | TextInput com ícone + clear button |
+| `src/components/search/SearchFilters.tsx` | Painel colapsável com filtros (status, prioridade, projeto, etiqueta) |
+| `src/app/(tabs)/search.tsx` | Screen completa: SearchBar + SearchFilters + FlatList |
+
+### 1.9.3 Filtros implementados
+- **Status** — Todas / Por fazer / Concluídas
+- **Prioridade** — Todos / P1 / P2 / P3 / P4
+- **Projeto** — Todos + lista de projetos (inclui Inbox)
+- **Etiqueta** — Todas + lista de etiquetas
+
+### 1.9.4 i18n keys adicionadas
+`search.placeholder` · `search.filters` · `search.clearFilters` · `search.noResults` · `search.initialHint` · `search.status.*` · `search.priority.*` · `search.project.*` · `search.label.*`
+
+### 1.9.5 Validação
+- **94 testes** ✅ (todos passam)
+- **0 erros de lint** (apenas warnings pré-existentes)
+- **Funcionalidade completa:** search bar com debounce 300ms, filtros colapsáveis, lista de resultados, empty states
 
 ---
 
-## 20. Notas técnicas / Pegadinhas conhecidas (atualizado)
+## 21. Próximas fases sugeridas
+
+| Fase | Descrição | Prioridade |
+|------|-----------|------------|
+| **2.0** | **Detalhe do Projeto** — CRUD projetos, lista tarefas do projeto, reordenar | Alta |
+| **2.1** | **Detalhe da Etiqueta** — Lista tarefas com etiqueta, editar etiqueta | Média |
+| **2.2** | **Configurações** — Tema, idioma, notificações, backup/export | Média |
+| **2.3** | **Sincronização cloud** — Placeholder (Supabase/Firebase) | Baixa |
+
+### 2.0 — Detalhe do Projeto (próxima)
+**Objetivo:** Tela de detalhe de projeto com:
+- Header com nome, cor e ícone do projeto
+- Lista de tarefas do projeto (reutiliza `TaskRow`)
+- Checkbox "Mostrar concluídas"
+- Botão "Adicionar tarefa" (abre Quick Add com projeto pré-selecionado)
+- Menu "..." para editar/arquivar/deletar projeto
+
+**Ficheiros a criar/modificar:**
+- `src/app/(tabs)/project/[id].tsx` — screen de detalhe (dynamic route)
+- `src/app/projects.tsx` — lista de projetos (se necessário)
+- `src/hooks/use-project-tasks.ts` — hook para buscar tarefas por projeto
+- `src/repositories/projects.repo.ts` — métodos existentes já suportam
+
+**Fase de implementação:**
+- **Fase A** — Dynamic route + header do projeto
+- **Fase B** — Lista de tarefas + toggle "Mostrar concluídas"
+- **Fase C** — CRUD projeto (editar/arquivar/deletar)
+- **Fase D** — Quick Add com projeto pré-selecionado + i18n
+
+---
+
+## 22. Notas técnicas / Pegadinhas conhecidas (atualizado)
+
+| Pegadinha | Solução |
+|-----------|---------|
+| `useQuery` não refrescava quando parâmetros mudavam | Adicionado parâmetro `key` opcional; re-fetch automático quando `key` muda |
+| Parser deixava "em"/"in" no título | Limpeza final `\b(em|in)\b` case-insensitive no final do parser |
+| `react-native-calendars` espera chaves `YYYY-MM-DD` | Conversão `YYYYMMDD` → `YYYY-MM-DD` + prop `dotColor` |
+| `Modal` transparente + `formSheet` não funciona no Android | Removido `transparent={true}` |
+| `TaskRow` não mostrava `dueTime` | Adicionado `timeLabel` + ícone `time-outline` ao lado da data |
+| Hooks não invalidavam cache ao mudar filtros | `useQuery` agora aceita `key` para forçar refresh |
+| Picker de data injetava "hoje" automaticamente | `datePick` default é `'none'`, só injeta quando user seleciona |
+| Inserir testes no meio do ficheiro corrompe estrutura | Usar Python para inserção precisa em vez de `head` + heredoc |
 
 | Pegadinha | Solução |
 |-----------|---------|

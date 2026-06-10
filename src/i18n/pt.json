@@ -50,5 +50,16 @@
   "agenda.noTasksForDate": "Sem tarefas para este dia",
   "agenda.dayTasks": "Tarefas para {date}",
   "agenda.monthTasks": "Tarefas do mês",
-  "agenda.noDate": "Sem data"
+  "agenda.noDate": "Sem data",
+  "search.placeholder": "Pesquisar tarefas...",
+  "search.filters": "Filtros",
+  "search.clearFilters": "Limpar",
+  "search.noResults": "Nenhum resultado",
+  "search.initialHint": "Digite para pesquisar ou use os filtros",
+  "search.status.all": "Todas",
+  "search.status.todo": "Por fazer",
+  "search.status.done": "Concluídas",
+  "search.priority.all": "Todos",
+  "search.project.all": "Todos",
+  "search.label.all": "Todas"
 }
