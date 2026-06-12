@@ -44,27 +44,42 @@ async function findOrCreateLabel(db: Db, name: string): Promise<string> {
 }
 
 export function useQuickAdd() {
-  return useMutation<[string], TaskDTO | null>('tasks:changed', async (db, raw) => {
-    const parsedRaw = parseQuickAdd(raw);
-    const parsed = quickAddParsedSchema.parse(parsedRaw);
+  return useMutation<[string, number | null, string | null], TaskDTO | null>(
+    'tasks:changed',
+    async (db, raw, pickerDueDate, projectIdOverride) => {
+      const parsedRaw = parseQuickAdd(raw);
+      const parsed = quickAddParsedSchema.parse(parsedRaw);
 
-    const projectId = parsed.projectName
-      ? await findOrCreateProject(db, parsed.projectName)
-      : INBOX_PROJECT_ID;
+      // projectIdOverride vem da URL (?project=ID) quando o Quick Add é
+      // aberto a partir do detail de um projecto. Tem prioridade sobre
+      // o #nome extraído do texto, que por sua vez tem prioridade sobre
+      // o Inbox.
+      let projectId: string;
+      if (projectIdOverride) {
+        projectId = projectIdOverride;
+      } else if (parsed.projectName) {
+        projectId = await findOrCreateProject(db, parsed.projectName);
+      } else {
+        projectId = INBOX_PROJECT_ID;
+      }
 
-    const task = await tasksRepo.create(db, {
-      title: parsed.title,
-      priority: parsed.priority,
-      projectId,
-      dueDate: parsed.dueDate,
-      dueTime: parsed.dueTime,
-    });
+      // O picker de data tem prioridade sobre a data extraída do texto.
+      const dueDate = pickerDueDate ?? parsed.dueDate;
 
-    if (parsed.labelName) {
-      const labelId = await findOrCreateLabel(db, parsed.labelName);
-      await labelsRepo.attachToTask(db, task.id, labelId);
+      const task = await tasksRepo.create(db, {
+        title: parsed.title,
+        priority: parsed.priority,
+        projectId,
+        dueDate,
+        dueTime: parsed.dueTime,
+      });
+
+      if (parsed.labelName) {
+        const labelId = await findOrCreateLabel(db, parsed.labelName);
+        await labelsRepo.attachToTask(db, task.id, labelId);
+      }
+
+      return task;
     }
-
-    return task;
-  });
+  );
 }

@@ -31,7 +31,8 @@ const KEYWORD_TODAY = /(?:^|\W)(hoje|today)(?=\W|$)/iu;
 const KEYWORD_TOMORROW = /(?:^|\W)(amanh[ãa]|tomorrow)(?=\W|$)/iu;
 
 // dd/mm ou dd-mm ou dd.mm (1-2 dígitos dia, 1-2 mês)
-const DATE_ABSOLUTE = /(?:^|\W)(\d{1,2})[\/\-\.](\d{1,2})(?:\.(\d{2,4}))?(?=\W|$)/g;
+// Ano opcional: aceita dd/mm, dd/mm/yyyy, dd/mm/yy, dd.mm.yyyy, etc.
+const DATE_ABSOLUTE = /(?:^|\W)(\d{1,2})[\/\-\.](\d{1,2})(?:[\/\-\.](\d{2,4}))?(?=\W|$)/g;
 
 // "d de mês" (pt) ou "month d" (en) — nomes completos
 const MONTHS_PT = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];

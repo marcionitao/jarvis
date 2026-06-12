@@ -95,6 +95,19 @@ export async function archive(db: JarvisDB, id: string): Promise<ProjectDTO | nu
   return updated;
 }
 
+export async function restore(db: JarvisDB, id: string): Promise<ProjectDTO | null> {
+  const existing = await getById(db, id);
+  if (!existing) return null;
+  const now = Date.now();
+  await db
+    .update(projects)
+    .set({ archivedAt: null, updatedAt: now, clientUpdatedAt: now, syncStatus: 'pending' })
+    .where(eq(projects.id, id));
+  const updated = { ...existing, archivedAt: null, updatedAt: now, clientUpdatedAt: now, syncStatus: 'pending' as const };
+  await enqueueOutbox(db, { entity: 'project', entityId: id, op: 'update', payload: updated });
+  return updated;
+}
+
 export async function softDelete(db: JarvisDB, id: string): Promise<boolean> {
   const existing = await getById(db, id);
   if (!existing) return false;

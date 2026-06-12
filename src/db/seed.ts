@@ -30,7 +30,7 @@ export async function seedIfEmpty(): Promise<void> {
       id: INBOX_PROJECT_ID,
       name: 'Inbox',
       color: '#838c91',
-      icon: 'inbox',
+      icon: 'file-tray-outline',
       parentId: null,
       order: 0,
       archivedAt: null,
@@ -39,6 +39,9 @@ export async function seedIfEmpty(): Promise<void> {
       clientUpdatedAt: now,
       syncStatus: 'local',
     });
+  } else if (existingInbox[0].icon === 'inbox' || existingInbox[0].icon === 'inbox-outline') {
+    // Corrigir ícone inválido de instalações anteriores.
+    await db.update(projects).set({ icon: 'file-tray-outline' }).where(eq(projects.id, INBOX_PROJECT_ID));
   }
 }
 

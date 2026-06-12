@@ -16,7 +16,7 @@ import {
   TextInput as RNTextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { addDays, format } from 'date-fns';
 import { Calendar } from 'react-native-calendars';
 import { Text } from '@/components/ui/text';
@@ -26,6 +26,7 @@ import { useTheme } from '@/state/theme.store';
 import { useI18n } from '@/state/i18n.context';
 import { useQuickAdd } from '@/hooks/use-quick-add';
 import { useLabels, useCreateLabel } from '@/hooks/use-labels';
+
 import { parseQuickAdd } from '@/services/quick-capture.service';
 import { cn } from '@/lib/cn';
 import { priorityColors } from '@/styles/theme';
@@ -89,7 +90,12 @@ export default function QuickAdd() {
   const quickAdd = useQuickAdd();
   const createLabel = useCreateLabel();
 
+  // Lê o project da URL (?project=ID) para associar a tarefa ao projecto correcto.
+  const { project: projectId } = useLocalSearchParams<{ project?: string }>();
+
   const [text, setText] = useState('');
+
+
   const [priority, setPriority] = useState<Priority>(0);
   const [datePick, setDatePick] = useState<DatePick>('none');
   const [customDate, setCustomDate] = useState<Date | null>(null);
@@ -121,7 +127,7 @@ export default function QuickAdd() {
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
-    const result = await quickAdd.mutate(submitText);
+    const result = await quickAdd.mutate(submitText, effectiveDueDate, projectId ?? null);
     if (result) router.back();
   };
 

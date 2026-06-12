@@ -43,3 +43,15 @@ export function useArchiveProject() {
     projectsRepo.archive(db, id)
   );
 }
+
+export function useRestoreProject() {
+  return useMutation<[string], ProjectDTO | null>('projects:changed', (db, id) =>
+    projectsRepo.restore(db, id)
+  );
+}
+
+export function useHardDeleteProject() {
+  return useMutation<[string], boolean>('projects:changed', (db, id) =>
+    projectsRepo.hardDelete(db, id).then((ok) => ok ?? false)
+  );
+}

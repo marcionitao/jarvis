@@ -153,23 +153,12 @@ Picker de data iniciava em 'today' e injetava "hoje" em tudo. Corrigido: `datePi
 
 ---
 
-## 20. Próximas fases sugeridas
+## 20. Etapa 1.9 — Pesquisar (CONCLUÍDA ✅)
 
-| Fase | Descrição | Prioridade |
-|------|-----------|------------|
-| **1.8b** | **Quick Add UX** — Pickers visuais (prioridade, data, etiquetas) | Alta |
-| **1.9** | **Pesquisar** — Search bar + filtros (projeto, prioridade, data, etiqueta) + full-text | Alta |
-| **2.0** | **Detalhe do Projeto** — CRUD projetos, lista tarefas do projeto, reordenar | Alta |
-| **2.1** | **Detalhe da Etiqueta** — Lista tarefas com etiqueta, editar etiqueta | Média |
-| **2.2** | **Configurações** — Tema, idioma, notificações, backup/export | Média |
-| **2.3** | **Sincronização cloud** — Placeholder (Supabase/Firebase) | Baixa |
-
-### 1.9 — Pesquisar (CONCLUÍDA ✅)
-
-### 1.9.1 Visão geral
+### 20.1 Visão geral
 Tela de pesquisa unificada com search bar + filtros. Filtros são todos opcionais e combinam com AND. Search é `LIKE %query%` no título (FTS5 fica para fase 2.3).
 
-### 1.9.2 Ficheiros criados
+### 20.2 Ficheiros criados
 | Ficheiro | Conteúdo |
 |----------|----------|
 | `src/repositories/tasks.repo.ts` | `searchWithFilters(filters)` + interface `SearchFilters` |
@@ -179,54 +168,337 @@ Tela de pesquisa unificada com search bar + filtros. Filtros são todos opcionai
 | `src/components/search/SearchFilters.tsx` | Painel colapsável com filtros (status, prioridade, projeto, etiqueta) |
 | `src/app/(tabs)/search.tsx` | Screen completa: SearchBar + SearchFilters + FlatList |
 
-### 1.9.3 Filtros implementados
+### 20.3 Filtros implementados
 - **Status** — Todas / Por fazer / Concluídas
 - **Prioridade** — Todos / P1 / P2 / P3 / P4
 - **Projeto** — Todos + lista de projetos (inclui Inbox)
 - **Etiqueta** — Todas + lista de etiquetas
 
-### 1.9.4 i18n keys adicionadas
+### 20.4 i18n keys adicionadas
 `search.placeholder` · `search.filters` · `search.clearFilters` · `search.noResults` · `search.initialHint` · `search.status.*` · `search.priority.*` · `search.project.*` · `search.label.*`
 
-### 1.9.5 Validação
+### 20.5 Validação
 - **94 testes** ✅ (todos passam)
 - **0 erros de lint** (apenas warnings pré-existentes)
 - **Funcionalidade completa:** search bar com debounce 300ms, filtros colapsáveis, lista de resultados, empty states
 
 ---
 
-## 21. Próximas fases sugeridas
+## 21. Etapa 2.0 — Detalhe do Projeto (CONCLUÍDA ✅)
 
-| Fase | Descrição | Prioridade |
-|------|-----------|------------|
-| **2.0** | **Detalhe do Projeto** — CRUD projetos, lista tarefas do projeto, reordenar | Alta |
-| **2.1** | **Detalhe da Etiqueta** — Lista tarefas com etiqueta, editar etiqueta | Média |
-| **2.2** | **Configurações** — Tema, idioma, notificações, backup/export | Média |
-| **2.3** | **Sincronização cloud** — Placeholder (Supabase/Firebase) | Baixa |
+### 21.1 Objectivo
+Implementar a tela de detalhe de projeto com:
+- Header com nome, cor, ícone e contagem de tarefas ✅
+- Lista de tarefas do projeto (reutiliza `TaskRow`) com toggle "Mostrar concluídas" ✅
+- CRUD completo: editar nome/cor/ícone, arquivar/restaurar, eliminar ✅
+- Quick Add com projeto pré-selecionado ✅
+- i18n pt-PT + en-US ✅
 
-### 2.0 — Detalhe do Projeto (próxima)
-**Objetivo:** Tela de detalhe de projeto com:
-- Header com nome, cor e ícone do projeto
-- Lista de tarefas do projeto (reutiliza `TaskRow`)
-- Checkbox "Mostrar concluídas"
-- Botão "Adicionar tarefa" (abre Quick Add com projeto pré-selecionado)
-- Menu "..." para editar/arquivar/deletar projeto
+### 21.2 Sub-etapa A — Dynamic Route + Header do Projeto (CONCLUÍDA ✅)
 
-**Ficheiros a criar/modificar:**
-- `src/app/(tabs)/project/[id].tsx` — screen de detalhe (dynamic route)
-- `src/app/projects.tsx` — lista de projetos (se necessário)
-- `src/hooks/use-project-tasks.ts` — hook para buscar tarefas por projeto
-- `src/repositories/projects.repo.ts` — métodos existentes já suportam
+**Ficheiros criados:**
+| Ficheiro | Conteúdo |
+|----------|----------|
+| `src/app/project/[id].tsx` | Dynamic route com header (nome, cor, ícone, contagem de tarefas), botão de voltar, estados de loading/error/empty |
 
-**Fase de implementação:**
-- **Fase A** — Dynamic route + header do projeto
-- **Fase B** — Lista de tarefas + toggle "Mostrar concluídas"
-- **Fase C** — CRUD projeto (editar/arquivar/deletar)
-- **Fase D** — Quick Add com projeto pré-selecionado + i18n
+**Ficheiros modificados:**
+| Ficheiro | Alteração |
+|----------|-----------|
+| `src/app/(tabs)/projects.tsx` | Adicionado `onPress` → `router.push(\`/project/${item.id}\`)`, ícones coloridos na lista, seta de navegação |
+| `src/i18n/pt.json` + `en.json` | Keys: `project.detail.taskCount_one/_other`, `project.detail.placeholder`, `project.detail.noTasks` |
+
+**Validação:**
+- Navegação funcional: lista de projetos → detalhe do projeto → voltar
+- Header exibe nome, cor, ícone e contagem de tarefas (singular/plural via i18n)
+- Estados de loading/error/empty implementados
+- TypeScript: corrigido `any` para `ComponentProps<typeof Ionicons>['name']` (sem erros de lint)
+
+### 21.3 Sub-etapa B — Lista de Tarefas + Toggle "Mostrar concluídas" (CONCLUÍDA ✅)
+
+**Objectivo:**
+- Mostrar tarefas do projeto com `TaskRow` ✅
+- Toggle "Mostrar concluídas" (via `useUIPrefs`) ✅
+- Empty state para projetos sem tarefas ✅
+- Filtro de tarefas (todo vs done) ✅
+- Empty state quando filter oculta tudo ("Tudo feito!") ✅
+- Botão "Tentar novamente" no estado de erro ✅
+
+**Ficheiros modificados:**
+| Ficheiro | Alteração |
+|----------|-----------|
+| `src/app/project/[id].tsx` | `FlatList` com `useProjectTasks`, filtro `showCompleted`, toggle no header, estados empty/error, renderização `TaskRow` |
+| `src/i18n/pt.json` + `en.json` | Keys: `project.detail.allDone`, `project.detail.toggleToShow` |
+
+**Detalhes técnicos:**
+- `filteredTasks` = `(tasks ?? []).filter(task => showCompleted || task.status === 'todo')`
+- `todoCount` usado no header (contagem de "por fazer") — corrige a key ICU `taskCount_one/_other`
+- `hasTasks` = lista filtrada vazia mas lista total não vazia → mostra estado "Tudo feito!"
+- `doneCount` passado ao i18n para texto contextual (`{count} concluídas`)
+- `Button` importado e usado no estado de erro e no estado "tudo feito"
+
+**Validação:**
+- tsc OK (erros pré-existentes, zero novos) · eslint OK · 0 erros de lint
+- Navegação: lista projetos → detalhe → voltar funciona
+- Toggle eye/eye-off aparece no header; filtra lista em tempo real
+- Empty state "Tudo feito!" + botão "Mostrar concluídas" quando filter oculta tudo
+- i18n pt/en correto
+
+**Próxima:** 2.0-C — CRUD Project (editar/arquivar/restaurar/eliminar)
+
+### 21.4 Sub-etapa C — CRUD Project (Editar/Arquivar/Restaurar/Eliminar) (CONCLUÍDA ✅)
+
+**Ficheiros criados:**
+| Ficheiro | Conteúdo |
+|----------|----------|
+| `src/app/project/edit/[id].tsx` | Modal de edição de projecto (nome, cor, ícone, preview) |
+
+**Ficheiros modificados:**
+| Ficheiro | Alteração |
+|----------|-----------|
+| `src/repositories/projects.repo.ts` | Adicionada função `restore(db, id)` que limpa `archivedAt` |
+| `src/hooks/use-projects.ts` | Adicionados `useRestoreProject()` e `useHardDeleteProject()` |
+| `src/app/project/[id].tsx` | Botão "..." no header + modal menu (Editar / Arquivar ou Restaurar / Eliminar) + dialog de confirmação de eliminação |
+| `src/i18n/pt.json` + `en.json` | Keys: `project.edit.*`, `project.menu.*`, `project.delete.*` |
+
+**Detalhes técnicos:**
+- `restore()` em `projects.repo.ts` — limpa `archivedAt = null` + enfileira outbox `update`
+- `useRestoreProject()` / `useHardDeleteProject()` — mutations que emitem `projects:changed`
+- Menu implementado com `Modal` + `Pressable` backdrop (padrão similar ao quick-add)
+- Eliminar abre dialog de confirmação antes de `hardDelete`
+- Após arquivar/restaurar → `router.back()`; após eliminar → `router.replace('/(tabs)/projects')`
+- Edit abre `/project/edit/${id}` que pré-preenche nome/cor/ícone do project actual
+- Preview visual no fundo do form de edição
+- Seletor de cor usa `border-2 border-white` (ring branco contra qualquer fundo)
+
+**Validação:**
+- tsc OK (erros pré-existentes, zero novos) · eslint OK · 0 erros de lint
+- Fluxo completo: detalhe → menu → editar (preenche campos) → guardar → volta e vê alteração
+- Arquivar → volta para lista de projectos (projecto desaparece da lista activa)
+- Eliminar → dialog → confirma → volta para lista de projectos
+- i18n pt/en correcto
+
+**Próxima:** 2.0-D — Quick Add com Projecto Pré-selecionado
+
+### 21.5 Sub-etapa D — Quick Add com Projecto Pré-selecionado + i18n + Polish (CONCLUÍDA ✅)
+
+**Ficheiros modificados:**
+| Ficheiro | Alteração |
+|----------|-----------|
+| `src/app/quick-add.tsx` | Lê `project` dos `searchParams` via `useLocalSearchParams`, fetch `useProject(projectId)`, pré-preenche texto com `#${project.name} ` via `useEffect` |
+| `src/app/project/[id].tsx` | Botão "+" no header (ao lado do "...") → `router.push('/quick-add?project=ID')` |
+| `src/app/(tabs)/projects.tsx` | Botão "+" no header → `router.push('/quick-add')` |
+| `src/i18n/pt.json` + `en.json` | Keys já existentes (`project.detail.addTask`) reutilizadas |
+
+**Detalhes técnicos:**
+- `useLocalSearchParams` em vez de `useSearchParams` (API correcta para esta versão do expo-router)
+- `useProject(projectId ?? null)` — converte `undefined` para `null` para o hook
+- `useEffect` só executa quando `prefilledProject` muda (evita loop infinito)
+- Se não houver `project` nos searchParams → comportamento normal do Quick Add
+- Botão "+" usa `colors.primary` para se distinguir dos outros ícones do header (eye/menu)
+
+**Validação:**
+- tsc OK (erros pré-existentes, zero novos) · eslint OK · 0 erros de lint
+- Quick Add sem params → campo vazio (comportamento normal)
+- Quick Add com `?project=ID` → texto pré-preenchido com `#nomeDoProject `
+- i18n pt/en correcto
+
+**Próxima:** 2.1 — Tela "Detalhe da Etiqueta" (listar tarefas com a etiqueta)
+
+## 22. Etapa 2.0-FIX — Correção Urgente: Criar Projeto não existia (CONCLUÍDA ✅)
+
+### 22.0 Diagnóstico — O que correu mal
+
+A etapa 2.0 foi marcada como "CONCLUÍDA", mas a sessão Projetos **não era funcional** porque:
+
+1. **Não existia ecrã de criar projetos** — o utilizador não tinha forma de criar um novo projeto pela app
+2. **O botão "+" na tab Projetos** abria o Quick Add (criar tarefa) em vez de criar projeto
+3. **O plano original (session-state.md 21.5) nunca especificou** o ecrã de criar projetos — era uma lacuna de planeamento
+
+**Causa raiz:** o plano da 2.0 focou-se no "detalhe do projeto" (ver/editar tarefas de um projeto existente) mas ignorou a necessidade básica de **criar** projetos. É como ter uma app de email sem botão "Escrever email".
+
+**Estado do código existente (✅ funciona):**
+- `projects.repo.ts` — CRUD completo (`create`, `update`, `archive`, `restore`, `hardDelete`) ✅
+- `use-projects.ts` — todos os hooks (`useCreateProject`, `useUpdateProject`, etc.) ✅
+- `project/[id].tsx` — detalhe do projeto com lista de tarefas ✅
+- `project/edit/[id].tsx` — edição de projeto existente ✅
+- `projects.tsx` — lista de projetos ✅
+
+**O que faltava (❌ não existia):**
+- Ecrã `/project/new` para criar novo projeto
+- Botão "+"的正确o na tab Projetos (apontar para criar projeto, não tarefa)
+- Empty state com CTA para orientar o utilizador
+
+### 22.1 Plano de Implementação
+
+#### Etapa A — Criar ecrã `/project/new` (CRÍTICA)
+
+**Ficheiro:** `src/app/project/new.tsx` (novo)
+
+Estrutura idêntica a `project/edit/[id].tsx` mas para criação:
+
+```
+Header: [✕]  "Novo Projeto"              [Criar]
+──────────────────────────────────────────────────
+Nome do Projeto
+[________________________________]   ← auto-focus
+
+Cor
+○ ● ● ● ● ● ● ● ● ●  ← ring branco no seleccionado
+
+Ícone
+[📁] [🏠] [💼] [📚] [❤️] [⭐] [🚩] ...
+(24 ícones Ionicons — reusing PROJECT_ICONS existente)
+
+Preview
+┌──────┐
+│  📁  │  ← ícone + cor seleccionados em tempo real
+│ Nome │
+└──────┘
+```
+
+**Dependências reutilizadas:**
+- `useCreateProject()` de `hooks/use-projects.ts` ✅ (já existe)
+- `PROJECT_ICONS` de `project/edit/[id].tsx` ✅ (copiar/importar)
+- `projectColors` de `styles/theme.ts` ✅ (já existe)
+- `useI18n()` com keys novas em `pt.json` / `en.json`
+
+**Fluxo:**
+1. User clica "+" na tab Projetos → vai para `/project/new`
+2. Escreve nome, escolhe cor e ícone
+3. Clica "Criar" → `useCreateProject.mutate(...)`
+4. On success → `router.back()` (volta à lista com novo projeto visível)
+5. Se nome vazio → botão "Criar" desabilitado
+
+#### Etapa B — Corrigir botão "+" na tab Projetos
+
+**Ficheiro:** `src/app/(tabs)/projects.tsx`
+
+| Antes | Depois |
+|-------|--------|
+| `router.push('/quick-add')` | `router.push('/project/new')` |
+| `accessibilityLabel: project.detail.addTask` | `accessibilityLabel: project.new.title` |
+| Icon: `add-outline` ✅ | Icon: `add-outline` ✅ |
+
+#### Etapa C — Empty state com CTA útil
+
+**Ficheiro:** `src/app/(tabs)/projects.tsx`
+
+Estado actual: ícone genérico sem orientação. Substituir por:
+
+```
+📁  (64px)
+Ainda não tens projetos
+Clica em + para criar o primeiro projeto
+
+[+ Criar primeiro projeto]    ← Button primary
+```
+
+#### Etapa D — i18n keys
+
+**Ficheiros:** `src/i18n/pt.json` · `src/i18n/en.json`
+
+```json
+{
+  "project": {
+    "new": {
+      "title": "Novo Projeto",
+      "nameLabel": "Nome do Projeto",
+      "namePlaceholder": "Ex: Trabalho, Pessoal...",
+      "colorLabel": "Cor",
+      "iconLabel": "Ícone",
+      "save": "Criar"
+    },
+    "empty": {
+      "title": "Ainda não tens projetos",
+      "subtitle": "Clica em + para criar o primeiro projeto",
+      "createFirst": "Criar primeiro projeto"
+    }
+  }
+}
+```
+
+### 22.2 Resumo das tarefas
+
+| # | Tarefa | Ficheiros | Prioridade |
+|---|--------|-----------|------------|
+| A | Criar ecrã novo projeto | `src/app/project/new.tsx` | 🔴 Crítica |
+| B | Corrigir botão "+" | `src/app/(tabs)/projects.tsx` | 🔴 Crítica |
+| C | Empty state com CTA | `src/app/(tabs)/projects.tsx` | 🟡 Média |
+| D | i18n pt + en | `src/i18n/pt.json`, `src/i18n/en.json` | 🟡 Média |
+| E | Validar (tsc + eslint) | — | 🟢 Necessária |
+
+### 22.3 Ordem de implementação
+A → B → C → D → E
+
+### 22.4 Ficheiros criados e modificados
+
+**Ficheiros criados:**
+| Ficheiro | Conteúdo |
+|----------|-----------|
+| `src/app/project/new.tsx` | Ecrã de criação de novo projecto (nome, cor, ícone, preview) |
+
+**Ficheiros modificados:**
+| Ficheiro | Alteração |
+|----------|-----------|
+| `src/app/(tabs)/projects.tsx` | Botão "+" → `router.push('/project/new')`; empty state com CTA |
+| `src/i18n/pt.json` + `src/i18n/en.json` | Keys: `project.new.*`, `project.empty.*` |
+
+### 22.5 Detalhes técnicos
+- `new.tsx` reutiliza `PROJECT_ICONS` de `edit/[id].tsx` (mesma grelha de 24 ícones)
+- `projectColors` de `styles/theme.ts` reutilizado (mesma paleta)
+- `useCreateProject()` de `hooks/use-projects.ts` reutilizado (já existia)
+- Nome vazio → botão "Criar" desabilitado (opacity 40)
+- On success → `router.back()` (volta à lista com novo project visível)
+
+### 22.6 Validação
+- tsc OK · eslint OK · 0 erros de lint
+- Fluxo completo: Tab Projetos → [+] → "Novo Projeto" → preenche → Criar → volta à lista
+- Empty state → título + subtítulo + botão "Criar primeiro projeto" funcional
+- i18n pt/en correcto
+
+**Próxima:** 2.1 — Tela "Detalhe da Etiqueta" (listar tarefas com a etiqueta)
+
+### 22.7 ⚠️ IMPORTANTE — Retomar 2.1 após este fix
+
+Após completar a Etapa 2.0-FIX, é **obrigatório retomar** a Etapa 2.1:
+
+> **2.1 — Tela "Detalhe da Etiqueta"** (listar tarefas com a etiqueta)
+
+Esta etapa estava planeada desde a secção 17.8 ("Próximos passos após 1.8") e foi adiada por causa do bug na 2.0. Depois de concluída a 2.0-FIX, deve-se retomar o plano原先 a partir da 2.1.
+
+### 22.8 Bug Fixes imediatamente após a 2.0-FIX
+
+Dois bugs reportados pelo utilizador foram corrigidos na mesma sessão:
+
+**Bug 1 — Nome do Projecto cortado ao primeiro espaço** (`src/app/project/new.tsx` + `src/app/project/edit/[id].tsx`)
+- **Causa:** `onSubmitEditing={handleSave}` no TextInput causava race condition — o evento `submit` disparava antes do state update do React Native
+- **Fix:** remover `onSubmitEditing` e `returnKeyType`, adicionar `maxLength={100}` e `blurOnSubmit={false}`
+
+**Bug 2 — Picker date "/2026" no título da tarefa** (`src/app/quick-add.tsx` + `src/hooks/use-quick-add.ts` + `src/services/quick-capture.service.ts`)
+- **Causa A:** o picker de data era calculado no componente mas nunca era passado ao hook `useQuickAdd` — o `effectiveDueDate` era descartado
+- **Causa B:** a regex `DATE_ABSOLUTE` exigia `.` antes do ano (`(?:\.(\d{2,4}))?`) mas o picker gera datas com `/` (ex: `dd/mm/yyyy`)
+- **Fix A:** `useQuickAdd` agora aceita segundo parâmetro `pickerDueDate: number | null` com prioridade sobre `parsed.dueDate`
+- **Fix B:** regex `DATE_ABSOLUTE` agora aceita `[/\-\.]` como separador antes do ano
+
+**Bug 3 — Prefill incorrecto com nomes de projecto de múltiplas palavras** (`src/app/quick-add.tsx`)
+- **Sintoma:** criar "Aprender linguas" → tarefa fica "linguas aprender ingles"
+- **Causa:** o prefill `#${projectName}` colocava `#Aprender linguas aprender ingles` no campo. A regex `PROJECT_REGEX = /#([\p{L}\p{N}_-]+)/` extraía apenas `#Aprender` (até ao espaço), deixando `linguas` no texto que era detectado como **etiqueta** pelo `LABEL_REGEX`
+- **Fix:** remover completamente o `useEffect` de prefill + imports `useProject` + `useLocalSearchParams`. O `projectId` nos searchParams é suficiente — não há necessidade de pré-preencher o `#nomeDoProject`
+
+**Ficheiros modificados:**
+- `src/app/quick-add.tsx` — `mutate(submitText, effectiveDueDate)`
+- `src/hooks/use-quick-add.ts` — assinatura `(raw, pickerDueDate)`
+- `src/services/quick-capture.service.ts` — regex `DATE_ABSOLUTE` corrigido
+- `src/app/project/new.tsx` — TextInput sem race condition
+- `src/app/project/edit/[id].tsx` — TextInput sem race condition
+
+**Validação:** tsc OK (erros pré-existentes, zero novos) · eslint OK · 0 erros de lint
+
+**Próxima:** 2.1 — Tela "Detalhe da Etiqueta" (listar tarefas com a etiqueta)
 
 ---
 
-## 22. Notas técnicas / Pegadinhas conhecidas (atualizado)
+## 23. Notas técnicas / Pegadinhas conhecidas (atualizado)
 
 | Pegadinha | Solução |
 |-----------|---------|
@@ -238,14 +510,7 @@ Tela de pesquisa unificada com search bar + filtros. Filtros são todos opcionai
 | Hooks não invalidavam cache ao mudar filtros | `useQuery` agora aceita `key` para forçar refresh |
 | Picker de data injetava "hoje" automaticamente | `datePick` default é `'none'`, só injeta quando user seleciona |
 | Inserir testes no meio do ficheiro corrompe estrutura | Usar Python para inserção precisa em vez de `head` + heredoc |
-
-| Pegadinha | Solução |
-|-----------|---------|
-| `useQuery` não refrescava quando parâmetros mudavam | Adicionado parâmetro `key` opcional; re-fetch automático quando `key` muda |
-| Parser deixava "em"/"in" no título | Limpeza final `\b(em|in)\b` case-insensitive no final do parser |
-| `react-native-calendars` espera chaves `YYYY-MM-DD` | Conversão `YYYYMMDD` → `YYYY-MM-DD` + prop `dotColor` |
-| `Modal` transparente + `formSheet` não funciona no Android | Removido `transparent={true}` |
-| `TaskRow` não mostrava `dueTime` | Adicionado `timeLabel` + ícone `time-outline` ao lado da data |
-| Hooks não invalidavam cache ao mudar filtros | `useQuery` agora aceita `key` para forçar refresh |
-
----
+| `projects.repo.ts` `softDelete` tem SQL redundante `and(eq(...))` | Corrigir para `where(eq(projects.id, id))` |
+| Falta hook `useRestoreProject` / `useHardDeleteProject` | Criar em `use-projects.ts` seguindo padrão `useArchiveProject` |
+| Ícones Ionicons `inbox` e `inbox-outline` não existem | Usar `file-tray-outline`; seed corrige instalações anteriores |
+| `useLocalSearchParams` em vez de `useSearchParams` | API correcta para esta versão do expo-router |
