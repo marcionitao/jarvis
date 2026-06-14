@@ -86,5 +86,29 @@
   "project.new.save": "Create",
   "project.empty.title": "No projects yet",
   "project.empty.subtitle": "Tap + to create your first project",
-  "project.empty.createFirst": "Create first project"
+  "project.empty.createFirst": "Create first project",
+  "label": {
+    "title": "Labels",
+    "new.title": "New Label",
+    "new.nameLabel": "Name",
+    "new.namePlaceholder": "e.g. Work, Personal...",
+    "new.colorLabel": "Color",
+    "new.save": "Create",
+    "new.cancel": "Cancel",
+    "detail.title": "Label Detail",
+    "detail.taskCount": "{todo} to do, {done} completed",
+    "detail.taskCountTotal": "{count} task",
+    "detail.taskCountTotal_other": "{count} tasks",
+    "detail.noTasks": "No tasks with this label",
+    "detail.allDone": "All done!",
+    "detail.toggleToShow": "Toggle on to see {count} completed",
+    "detail.menu.delete": "Delete",
+    "detail.confirmDelete": "Delete this label? Tasks will not be deleted.",
+    "detail.cancel": "Cancel",
+    "detail.confirm": "Delete",
+    "menu.labels": "Labels",
+    "empty.title": "No labels yet",
+    "empty.subtitle": "Tap + to create your first label",
+    "empty.createFirst": "Create first label"
+  }
 }

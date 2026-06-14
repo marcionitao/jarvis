@@ -97,5 +97,29 @@
   "project.new.save": "Criar",
   "project.empty.title": "Ainda não tens projetos",
   "project.empty.subtitle": "Clica em + para criar o primeiro projeto",
-  "project.empty.createFirst": "Criar primeiro projeto"
+  "project.empty.createFirst": "Criar primeiro projeto",
+  "label": {
+    "title": "Etiquetas",
+    "new.title": "Nova Etiqueta",
+    "new.nameLabel": "Nome",
+    "new.namePlaceholder": "Ex: Trabalho, Pessoal...",
+    "new.colorLabel": "Cor",
+    "new.save": "Criar",
+    "new.cancel": "Cancelar",
+    "detail.title": "Detalhe da Etiqueta",
+    "detail.taskCount": "{todo} por fazer, {done} concluídas",
+    "detail.taskCountTotal": "{count} tarefa",
+    "detail.taskCountTotal_other": "{count} tarefas",
+    "detail.noTasks": "Sem tarefas com esta etiqueta",
+    "detail.allDone": "Tudo feito!",
+    "detail.toggleToShow": "Ativa para ver as {count} concluídas",
+    "detail.menu.delete": "Eliminar",
+    "detail.confirmDelete": "Eliminar esta etiqueta? As tarefas não serão eliminadas.",
+    "detail.cancel": "Cancelar",
+    "detail.confirm": "Eliminar",
+    "menu.labels": "Etiquetas",
+    "empty.title": "Ainda não tens etiquetas",
+    "empty.subtitle": "Clica em + para criar a primeira etiqueta",
+    "empty.createFirst": "Criar primeira etiqueta"
+  }
 }
