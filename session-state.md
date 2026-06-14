@@ -498,6 +498,130 @@ Dois bugs reportados pelo utilizador foram corrigidos na mesma sessão:
 
 ---
 
+## 24. Etapa 2.1 — Detalhe da Etiqueta (CONCLUÍDA ✅)
+
+### 24.1 Objectivo
+Implementar a funcionalidade completa de etiquetas:
+- Lista de etiquetas acessível do header de "Hoje" e "Projetos"
+- Criar nova etiqueta (nome + cor)
+- Detalhe da etiqueta com estatísticas e lista de tarefas
+- Eliminar etiqueta com confirmação
+- i18n pt-PT + en-US
+
+### 24.2 Design aprovado
+
+**Acesso:** A lista de etiquetas (`/labels`) é acessível via link no header de "Hoje" e "Projetos".
+
+**CRUD:** Apenas **C**riar e **D**eletar (sem edição de etiquetas).
+
+**Tela Lista (`/labels`):**
+- FlatList com: círculo de cor + nome + contagem (0)
+- Botão "+" no header → `/labels/new`
+- Tap em etiqueta → `/label/[id]`
+
+**Tela Detalhe (`/label/[id]`):**
+- Header: nome da etiqueta, cor, estatísticas (por fazer / concluídas)
+- Toggle "Mostrar concluídas" (mesmo padrão de projetos)
+- Lista de tarefas com `TaskRow`
+- Menu (⋮) → Eliminar (com confirmação)
+
+### 24.3 Ficheiros a criar
+
+| Ficheiro | Conteúdo |
+|----------|----------|
+| `src/app/labels/index.tsx` | Lista de etiquetas |
+| `src/app/labels/new.tsx` | Criar nova etiqueta |
+| `src/app/label/[id].tsx` | Detalhe da etiqueta (dynamic route) |
+| `src/hooks/use-tasks-for-label.ts` | Hook para buscar tarefas por etiqueta |
+| `src/components/labels/LabelRow.tsx` | Componente de linha para lista |
+
+### 24.4 Ficheiros a modificar
+
+| Ficheiro | Alteração |
+|----------|-----------|
+| `src/repositories/tasks.repo.ts` | Adicionar método `listByLabel(labelId, includeCompleted)` |
+| `src/hooks/use-labels.ts` | Adicionar `useLabel(id)` hook |
+| `src/hooks/index.ts` | Exportar `useTasksForLabel` e `useLabel` |
+| `src/app/(tabs)/index.tsx` | Header: adicionar link para etiquetas |
+| `src/app/(tabs)/projects.tsx` | Header: adicionar link para etiquetas |
+| `src/i18n/pt.json` | Keys: `label.*` |
+| `src/i18n/en.json` | Keys: `label.*` |
+
+### 24.5 Plano detalhado
+
+Consultar `docs/superpowers/plans/2026-06-13-label-detail.md` para o plano completo.
+
+**Resumo das tarefas:**
+1. Adicionar `listByLabel` em `tasks.repo.ts`
+2. Criar hook `useTasksForLabel` + `useLabel`
+3. Adicionar i18n keys
+4. Criar `LabelRow` component
+5. Criar ecrã `/labels` (lista)
+6. Criar ecrã `/labels/new` (criar etiqueta)
+7. Criar ecrã `/label/[id]` (detalhe)
+8. Adicionar links nos headers de Hoje e Projetos
+9. Validação (tsc + eslint + npm test + smoke test)
+
+### 24.6 Dependências do código existente
+
+- `labels.repo.ts` ✅ — já tem `create`, `getById`, `hardDelete`
+- `use-labels.ts` ✅ — já tem `useCreateLabel`, `useDeleteLabel`
+- `TaskRow` ✅ — reutilizado na lista de tarefas
+- `useUIPrefs` ✅ — padrão toggle concluídas reutilizado
+- Ícones Ionicons ✅ — `pricetag-outline`, `trash-outline`
+
+### 24.7 Validação esperada
+
+- tsc OK · eslint OK · npm test passa
+- Smoke test:
+  1. Header Hoje → Etiquetas → lista vazia com CTA
+  2. [+] → cria etiqueta "Trabalho" (cor azul)
+  3. Volta → vê "Trabalho" na lista
+  4. Tap em "Trabalho" → detalhe com estatísticas
+  5. Quick Add → `@Trabalho` → cria tarefa
+  6. Detalhe da etiqueta → vê a tarefa
+  7. Toggle "Mostrar concluídas" → filtra
+  8. Menu → Eliminar → confirmação → volta à lista (etiqueta desapareceu)
+
+### 24.8 Próxima etapa após 2.1
+
+**2.2 — Definições (Settings)**
+- Tela de definições acessível do header de "Hoje"
+- Conteúdo inicial: tema (light/dark/system), idioma (pt/en)
+
+### 24.9 Resumo da implementação
+
+**Commits realizados (10):**
+1. `9d44639` feat(labels): add listByLabel method to tasks repository
+2. `58f0c8b` feat(labels): add useTasksForLabel and useLabel hooks
+3. `906f7af` i18n: add label keys for pt and en
+4. `d20dad4` feat(labels): add LabelRow component
+5. `5d65815` feat(labels): add labels list screen
+6. `7491d8c` feat(labels): add create label screen
+7. `7ae0aa1` feat(labels): add label detail screen
+8. `b10395f` feat(labels): add labels link to headers of Hoje and Projetos
+9. `b511a5a` fix(i18n): flatten label keys to use dot notation like rest of file
+
+**Ficheiros criados (7):**
+- `src/app/labels/index.tsx` — lista de etiquetas
+- `src/app/labels/new.tsx` — criar etiqueta
+- `src/app/label/[id].tsx` — detalhe da etiqueta
+- `src/hooks/use-tasks-for-label.ts` — hook para tarefas por etiqueta
+- `src/components/labels/LabelRow.tsx` — componente de linha
+
+**Ficheiros modificados (5):**
+- `src/repositories/tasks.repo.ts` — método `listByLabel`
+- `src/hooks/use-labels.ts` — hook `useLabel`
+- `src/hooks/index.ts` — exports
+- `src/app/(tabs)/index.tsx` — link para etiquetas no header
+- `src/app/(tabs)/projects.tsx` — link para etiquetas no header
+
+**Validação:**
+- tsc OK (erros pré-existentes) · eslint OK (warnings pré-existentes) · 94 testes ✅
+- i18n: 19 keys para label em pt e en (flat dot notation)
+
+---
+
 ## 23. Notas técnicas / Pegadinhas conhecidas (atualizado)
 
 | Pegadinha | Solução |
