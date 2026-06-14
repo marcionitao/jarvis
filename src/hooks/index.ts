@@ -32,9 +32,12 @@ export {
   useUpdateLabel,
   useDeleteLabel,
   useAttachLabel,
+  useLabel,
 } from './use-labels';
 
 export { useTasksForDate } from './use-tasks-for-date';
+
+export { useTasksForLabel } from './use-tasks-for-label';
 
 export { useTasksForMonth } from './use-tasks-for-month';
 

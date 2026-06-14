@@ -34,6 +34,15 @@ export function useDeleteLabel() {
   );
 }
 
+export function useLabel(id: string | null): QueryState<LabelDTO | null> {
+  const fetcher = useCallback(
+    (db: Parameters<typeof labelsRepo.getById>[0]) =>
+      id ? labelsRepo.getById(db, id) : Promise.resolve(null),
+    [id]
+  );
+  return useQuery<LabelDTO | null>(fetcher, ['labels:changed'], id);
+}
+
 export function useAttachLabel() {
   return useMutation<[string, string], boolean>('tasks:changed', (db, taskId, labelId) =>
     labelsRepo.attachToTask(db, taskId, labelId)
