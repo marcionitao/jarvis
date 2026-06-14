@@ -58,7 +58,7 @@ export default function LabelsScreen() {
             <Icon name="add-outline" size={24} color={colors.primary} />
           </Pressable>
         </View>
-        {loading && labels.length === 0 ? (
+        {loading && (labels?.length ?? 0) === 0 ? (
           <View className="flex-1 items-center justify-center">
             <ActivityIndicator color={colors.primary} />
           </View>
@@ -69,10 +69,10 @@ export default function LabelsScreen() {
           </View>
         ) : (
           <FlatList
-            data={labels}
+            data={labels ?? []}
             keyExtractor={(item) => item.id}
             renderItem={renderItem}
-            contentContainerClassName={labels.length === 0 ? 'flex-1' : 'pb-32'}
+            contentContainerClassName={(labels?.length ?? 0) === 0 ? 'flex-1' : 'pb-32'}
             ListEmptyComponent={renderEmpty}
           />
         )}
