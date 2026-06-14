@@ -177,4 +177,121 @@ describe('tasks.repo', () => {
       expect(tasks).toHaveLength(1);
       expect(tasks[0].title).toBe('Hoje');
     });
+
+  describe('searchWithFilters', () => {
+    it('devolve tarefas filtradas por labelId', async () => {
+      ({ db, close } = createTestDB());
+      const task1 = await tasksRepo.create(db, { title: 'Comprar leite' });
+      const task2 = await tasksRepo.create(db, { title: 'Pagar contas' });
+      const task3 = await tasksRepo.create(db, { title: 'Reunião' });
+
+      const { create: createLabel, attachToTask } = await import('./labels.repo');
+      const label1 = await createLabel(db, { name: 'casa', color: '#ff0' });
+      const label2 = await createLabel(db, { name: 'trabalho', color: '#00f' });
+
+      await attachToTask(db, task1.id, label1.id);
+      await attachToTask(db, task2.id, label2.id);
+      await attachToTask(db, task3.id, label2.id);
+
+      const result1 = await tasksRepo.searchWithFilters(db, { labelId: label1.id });
+      expect(result1).toHaveLength(1);
+      expect(result1[0].title).toBe('Comprar leite');
+
+      const result2 = await tasksRepo.searchWithFilters(db, { labelId: label2.id });
+      expect(result2).toHaveLength(2);
+      expect(result2.map((t) => t.title).sort()).toEqual(['Pagar contas', 'Reunião']);
+    });
+
+    it('devolve lista vazia se nenhuma task tem a label', async () => {
+      ({ db, close } = createTestDB());
+      await tasksRepo.create(db, { title: 'Qualquer' });
+      const { create: createLabel } = await import('./labels.repo');
+      const label = await createLabel(db, { name: 'sozinha', color: '#f00' });
+
+      const result = await tasksRepo.searchWithFilters(db, { labelId: label.id });
+      expect(result).toHaveLength(0);
+    });
+
+    it('search com query @label retorna tasks com essa label', async () => {
+      ({ db, close } = createTestDB());
+      const { create: createLabel, attachToTask } = await import('./labels.repo');
+
+      const task = await tasksRepo.create(db, { title: 'Comprar leite' });
+      const label = await createLabel(db, { name: 'casa', color: '#ff0' });
+      await attachToTask(db, task.id, label.id);
+
+      const result = await tasksRepo.searchWithFilters(db, { query: '@casa' });
+      expect(result).toHaveLength(1);
+      expect(result[0].title).toBe('Comprar leite');
+    });
+
+    it('search com query @label não retorna tasks sem essa label', async () => {
+      ({ db, close } = createTestDB());
+      const { create: createLabel, attachToTask } = await import('./labels.repo');
+
+      const task = await tasksRepo.create(db, { title: 'Reunião' });
+      const label = await createLabel(db, { name: 'casa', color: '#ff0' });
+      await attachToTask(db, task.id, label.id);
+
+      const result = await tasksRepo.searchWithFilters(db, { query: '@trabalho' });
+      expect(result).toHaveLength(0);
+    });
+
+    it('search com query @label também pesquisa por texto (@ literal)', async () => {
+      ({ db, close } = createTestDB());
+
+      // Task cujo título contém literalmente "@casa"
+      const task = await tasksRepo.create(db, { title: 'Marcar @casa reunião' });
+
+      const result = await tasksRepo.searchWithFilters(db, { query: '@casa' });
+      expect(result).toHaveLength(1);
+      expect(result[0].title).toBe('Marcar @casa reunião');
+    });
+
+    it('search com nome de label (sem @) retorna tasks com essa label', async () => {
+      ({ db, close } = createTestDB());
+      const { create: createLabel, attachToTask } = await import('./labels.repo');
+
+      const task = await tasksRepo.create(db, { title: 'Comprar remédios' });
+      const label = await createLabel(db, { name: 'saude', color: '#f00' });
+      await attachToTask(db, task.id, label.id);
+
+      // Pesquisa sem @ - deve encontrar pela label
+      const result = await tasksRepo.searchWithFilters(db, { query: 'saude' });
+      expect(result).toHaveLength(1);
+      expect(result[0].title).toBe('Comprar remédios');
+    });
+
+    it('search com nome parcial de label retorna tasks com label correspondente', async () => {
+      ({ db, close } = createTestDB());
+      const { create: createLabel, attachToTask } = await import('./labels.repo');
+
+      const task = await tasksRepo.create(db, { title: 'Curso online' });
+      const label = await createLabel(db, { name: 'formacao profissional', color: '#0f0' });
+      await attachToTask(db, task.id, label.id);
+
+      // Pesquisa parcial - deve encontrar
+      const result = await tasksRepo.searchWithFilters(db, { query: 'formacao' });
+      expect(result).toHaveLength(1);
+      expect(result[0].title).toBe('Curso online');
+    });
+
+    it('combina labelId com outros filtros', async () => {
+      ({ db, close } = createTestDB());
+      const { create: createLabel, attachToTask } = await import('./labels.repo');
+
+      const taskA = await tasksRepo.create(db, { title: 'Urgente casa', priority: 1 });
+      const taskB = await tasksRepo.create(db, { title: 'Normal casa', priority: 3 });
+      const label = await createLabel(db, { name: 'casa', color: '#ff0' });
+      await attachToTask(db, taskA.id, label.id);
+      await attachToTask(db, taskB.id, label.id);
+
+      const result = await tasksRepo.searchWithFilters(db, {
+        labelId: label.id,
+        priority: 1,
+      });
+      expect(result).toHaveLength(1);
+      expect(result[0].title).toBe('Urgente casa');
+    });
   });
+});

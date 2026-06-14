@@ -5,7 +5,7 @@
 import { and, asc, desc, eq, gte, inArray, isNull, lte, like, or, sql } from 'drizzle-orm';
 import { ulid } from 'ulid';
 import type { JarvisDB } from '@/db/client';
-import { tasks, taskLabels, type Task, type NewTask } from '@/db/schema';
+import { tasks, taskLabels, labels, type Task, type NewTask } from '@/db/schema';
 import { enqueueOutbox } from './outbox.repo';
 
 export type TaskDTO = Task;
@@ -219,7 +219,33 @@ export async function searchWithFilters(
 
   if (filters.query) {
     const pattern = `%${filters.query.toLowerCase()}%`;
-    conditions.push(like(sql`lower(${tasks.title})`, pattern));
+    const queryConditions = [
+      like(sql`lower(${tasks.title})`, pattern),
+      like(sql`lower(${tasks.description})`, pattern),
+    ];
+
+    // Pesquisar labels cujo nome contém a query (funciona para "@saude" ou apenas "saude")
+    const labelNamePattern = filters.query.startsWith('@')
+      ? filters.query.slice(1).toLowerCase()
+      : filters.query.toLowerCase();
+
+    const matchingLabels = await db
+      .select()
+      .from(labels)
+      .where(like(sql`lower(${labels.name})`, `%${labelNamePattern}%`));
+
+    if (matchingLabels.length > 0) {
+      const labelTaskRows = await db
+        .select({ taskId: taskLabels.taskId })
+        .from(taskLabels)
+        .where(inArray(taskLabels.labelId, matchingLabels.map((l) => l.id)));
+
+      if (labelTaskRows.length > 0) {
+        queryConditions.push(inArray(tasks.id, labelTaskRows.map((r) => r.taskId)));
+      }
+    }
+
+    conditions.push(or(...queryConditions));
   }
 
   if (filters.projectId !== undefined) {

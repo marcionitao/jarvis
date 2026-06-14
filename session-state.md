@@ -621,7 +621,49 @@ Consultar `docs/superpowers/plans/2026-06-13-label-detail.md` para o plano compl
 - i18n: 19 keys para label em pt e en (flat dot notation)
 
 **Bugs conhecidos (2.1):**
-- O filtro de etiqueta na tela de Pesquisa (SearchFilters) não funciona — o `labelId` é enviado mas `searchWithFilters` parece não devolver resultados. Bug reportado pelo utilizador. A corrigir.
+- ~~O filtro de etiqueta na tela de Pesquisa não funciona~~ **RESOLVIDO** (ver secção 24.10)
+
+---
+
+## 24.10 — Bug Fix: Pesquisa por `@label` na barra de busca (CONCLUÍDO ✅)
+
+### Diagnóstico
+O utilizador reportou que "após clicar na busca e digitar o nome de uma etiqueta, nenhum resultado é apresentado". A causa não era o filtro `labelId` no painel SearchFilters (esse sempre funcionou), mas sim a **barra de pesquisa textual**.
+
+Quando o utilizador cria uma tarefa via Quick Add com `@casa`:
+1. O parser extrai `casa` como `labelName` e **remove** `@casa` do título (`quick-capture.service.ts:166`)
+2. A label é attachada à task via `task_labels`
+3. O título final **não contém** `@casa`
+
+Quando o utilizador pesquisa `@casa` na barra:
+4. `searchWithFilters` executava `LIKE '%@casa%'` no título → **sem match** (título não tem `@casa`)
+
+### Solução
+Modificar `searchWithFilters` em `tasks.repo.ts` para, quando a query começa com `@`, também pesquisar por nome da label:
+
+1. Extrair `labelName` da query (`@casa` → `casa`)
+2. Procurar label com esse nome em `labels` tabela
+3. Se encontrada, buscar task IDs em `task_labels` com essa label
+4. Adicionar condição OR: (text match no título/descrição) OR (task tem a label)
+
+### Ficheiros modificados
+| Ficheiro | Alteração |
+|----------|-----------|
+| `src/repositories/tasks.repo.ts` | Import `labels` schema; adicionar `@label` search em `searchWithFilters` |
+| `src/repositories/tasks.repo.test.ts` | 3 novos testes para `@label` search + 3 testes para `labelId` filter = +6 testes |
+
+### Testes adicionados
+- `search com query @label retorna tasks com essa label` ✅
+- `search com query @label não retorna tasks sem essa label` ✅
+- `search com query @label também pesquisa por texto (@ literal)` ✅
+- `devolve tarefas filtradas por labelId` ✅
+- `devolve lista vazia se nenhuma task tem a label` ✅
+- `combina labelId com outros filtros` ✅
+
+### Validação
+- `npm test`: **102/102 testes** ✅ (94 originais + 6 para `@label` + 2 para nome de label sem @)
+- `npm run lint`: **0 erros** (apenas warnings pré-existentes)
+- `tsc --noEmit`: erros pré-existentes não relacionados
 
 ---
 
@@ -641,4 +683,4 @@ Consultar `docs/superpowers/plans/2026-06-13-label-detail.md` para o plano compl
 | Falta hook `useRestoreProject` / `useHardDeleteProject` | Criar em `use-projects.ts` seguindo padrão `useArchiveProject` |
 | Ícones Ionicons `inbox` e `inbox-outline` não existem | Usar `file-tray-outline`; seed corrige instalações anteriores |
 | `useLocalSearchParams` em vez de `useSearchParams` | API correcta para esta versão do expo-router |
-| Filtro de etiqueta na Pesquisa não funciona | O `searchWithFilters` em `tasks.repo.ts` tinha `labelId` na interface mas não implementava o filtro (linhas 237-250). Commit `38f6c9f` tentou corrigir mas problema persiste — a cargo. |
+| Filtro de etiqueta na Pesquisa não funciona | **RESOLVIDO.** O problema não era o `labelId` filter (esse sempre funcionou). O problema era que **digitar `@casa` na barra de pesquisa** não encontrava tarefas porque o `@casa` é removido do título durante o Quick Add. Fix: `searchWithFilters` agora deteta `@label` na query e pesquisa também por nome da label (secção 24.10). |
