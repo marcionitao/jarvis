@@ -2,10 +2,10 @@
 // Repositório de tarefas. CRUD + queries comuns (Hoje, Por projeto, Por data).
 // Toda mutation enfileira evento na outbox (sync-ready).
 
-import { and, asc, desc, eq, gte, isNull, lte, like, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, isNull, lte, like, or, sql } from 'drizzle-orm';
 import { ulid } from 'ulid';
 import type { JarvisDB } from '@/db/client';
-import { tasks, type Task, type NewTask } from '@/db/schema';
+import { tasks, taskLabels, type Task, type NewTask } from '@/db/schema';
 import { enqueueOutbox } from './outbox.repo';
 
 export type TaskDTO = Task;
@@ -255,4 +255,30 @@ export async function searchWithFilters(
     .where(where)
     .orderBy(desc(tasks.clientUpdatedAt))
     .limit(100);
+}
+
+export async function listByLabel(
+  db: JarvisDB,
+  labelId: string,
+  includeCompleted: boolean = false
+): Promise<TaskDTO[]> {
+  const labelTasks = await db
+    .select({ taskId: taskLabels.taskId })
+    .from(taskLabels)
+    .where(eq(taskLabels.labelId, labelId));
+
+  if (labelTasks.length === 0) return [];
+
+  const taskIds = labelTasks.map(lt => lt.taskId);
+
+  const conditions = [inArray(tasks.id, taskIds)];
+  if (!includeCompleted) {
+    conditions.push(eq(tasks.status, 'todo'));
+  }
+
+  return db
+    .select()
+    .from(tasks)
+    .where(and(...conditions))
+    .orderBy(asc(tasks.dueDate), asc(tasks.order));
 }
