@@ -2,7 +2,8 @@
 // Ecrã "Hoje" (Etapa 1.6) — agora dentro do grupo (tabs).
 // O botão "+" do header foi removido (FAB central na tab bar substitui).
 
-import { View, FlatList, Pressable, ActivityIndicator } from 'react-native';
+import { useState } from 'react';
+import { View, FlatList, Pressable, ActivityIndicator, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useTodayTasks } from '@/hooks/use-tasks';
@@ -28,6 +29,14 @@ export default function TodayScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
       <View className="flex-1">
         <View className="px-5 pt-2 pb-3 flex-row items-center justify-between">
+          <Pressable
+            onPress={() => router.push('/labels' as never)}
+            className="p-2 -ml-2"
+            accessibilityRole="button"
+            accessibilityLabel={t('label.menu.labels')}
+          >
+            <Icon name="pricetag-outline" size={22} color={colors.mutedForeground} />
+          </Pressable>
           <Text variant="h1">{t('tab.today')}</Text>
           <Pressable
             onPress={toggleShowCompleted}

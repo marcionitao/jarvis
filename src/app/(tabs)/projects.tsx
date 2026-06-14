@@ -25,6 +25,14 @@ export default function ProjectsScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
       <View className="flex-1">
         <View className="px-5 pt-2 pb-3 flex-row items-center justify-between">
+          <Pressable
+            onPress={() => router.push('/labels' as never)}
+            className="p-2 -ml-2"
+            accessibilityRole="button"
+            accessibilityLabel={t('label.menu.labels')}
+          >
+            <Icon name="pricetag-outline" size={22} color={colors.mutedForeground} />
+          </Pressable>
           <Text variant="h1">{t('tab.projects')}</Text>
           <Pressable
             onPress={() => router.push('/project/new' as never)}
