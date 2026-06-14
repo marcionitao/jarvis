@@ -620,6 +620,9 @@ Consultar `docs/superpowers/plans/2026-06-13-label-detail.md` para o plano compl
 - tsc OK (erros pré-existentes) · eslint OK (warnings pré-existentes) · 94 testes ✅
 - i18n: 19 keys para label em pt e en (flat dot notation)
 
+**Bugs conhecidos (2.1):**
+- O filtro de etiqueta na tela de Pesquisa (SearchFilters) não funciona — o `labelId` é enviado mas `searchWithFilters` parece não devolver resultados. Bug reportado pelo utilizador. A corrigir.
+
 ---
 
 ## 23. Notas técnicas / Pegadinhas conhecidas (atualizado)
@@ -638,3 +641,4 @@ Consultar `docs/superpowers/plans/2026-06-13-label-detail.md` para o plano compl
 | Falta hook `useRestoreProject` / `useHardDeleteProject` | Criar em `use-projects.ts` seguindo padrão `useArchiveProject` |
 | Ícones Ionicons `inbox` e `inbox-outline` não existem | Usar `file-tray-outline`; seed corrige instalações anteriores |
 | `useLocalSearchParams` em vez de `useSearchParams` | API correcta para esta versão do expo-router |
+| Filtro de etiqueta na Pesquisa não funciona | O `searchWithFilters` em `tasks.repo.ts` tinha `labelId` na interface mas não implementava o filtro (linhas 237-250). Commit `38f6c9f` tentou corrigir mas problema persiste — a cargo. |
