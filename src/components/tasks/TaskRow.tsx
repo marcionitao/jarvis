@@ -1,5 +1,5 @@
 // src/components/tasks/TaskRow.tsx
-// Linha de tarefa: checkbox bouncy + título + chip de prioridade + badge de data.
+// Linha de tarefa: checkbox bouncy + título + chip de prioridade + badge de data + etiquetas.
 
 import { View, Pressable } from 'react-native';
 import BouncyCheckbox from 'react-native-bouncy-checkbox';
@@ -7,7 +7,7 @@ import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
 import { useTheme } from '@/state/theme.store';
 import { useI18n } from '@/state/i18n.context';
-import { useToggleComplete } from '@/hooks/use-task-mutations';
+import { useToggleComplete, useLabelsForTask } from '@/hooks';
 import type { TaskDTO } from '@/repositories/tasks.repo';
 import { getPriorityColor, getPriorityLabel, type Priority } from '@/lib/format/priority';
 import { formatSmartDate, formatRelative } from '@/lib/format/date';
@@ -34,6 +34,7 @@ export function TaskRow({ task }: TaskRowProps) {
   const { colors } = useTheme();
   const { locale, t } = useI18n();
   const toggle = useToggleComplete();
+  const { data: labels } = useLabelsForTask(task.id);
 
   const isDone = task.status === 'done';
   const priority = task.priority as Priority;
@@ -71,7 +72,7 @@ export function TaskRow({ task }: TaskRowProps) {
           >
             {task.title}
           </Text>
-          {(hasPriority || dateLabel || (isDone && task.completedAt)) && (
+          {(hasPriority || dateLabel || (isDone && task.completedAt) || (labels && labels.length > 0)) && (
             <View className="flex-row items-center gap-2 flex-wrap mt-1">
               {isDone && task.completedAt && (
                 <View className="flex-row items-center gap-1">
@@ -106,6 +107,31 @@ export function TaskRow({ task }: TaskRowProps) {
                       </>
                     )}
                   </Text>
+                </View>
+              )}
+              {labels && labels.length > 0 && (
+                <View className="flex-row items-center gap-1 flex-wrap">
+                  <Icon name="pricetag-outline" size={14} color={colors.mutedForeground} />
+                  {labels.slice(0, 3).map((label) => (
+                    <View
+                      key={label.id}
+                      className="px-1.5 py-0.5 rounded"
+                      style={{ backgroundColor: label.color + '33' }}
+                    >
+                      <Text
+                        variant="caption"
+                        className="text-xs"
+                        style={{ color: label.color }}
+                      >
+                        {label.name}
+                      </Text>
+                    </View>
+                  ))}
+                  {labels.length > 3 && (
+                    <Text variant="caption" className="text-muted-foreground">
+                      +{labels.length - 3}
+                    </Text>
+                  )}
                 </View>
               )}
             </View>

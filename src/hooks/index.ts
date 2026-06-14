@@ -35,6 +35,8 @@ export {
   useLabel,
 } from './use-labels';
 
+export { useLabelsForTask } from './use-labels-for-task';
+
 export { useTasksForDate } from './use-tasks-for-date';
 
 export { useTasksForLabel } from './use-tasks-for-label';
