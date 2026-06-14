@@ -48,3 +48,11 @@ export function useAttachLabel() {
     labelsRepo.attachToTask(db, taskId, labelId)
   );
 }
+
+export function useLabelTaskCounts(): QueryState<Map<string, number>> {
+  const fetcher = useCallback(
+    (db: Parameters<typeof labelsRepo.countTasksPerLabel>[0]) => labelsRepo.countTasksPerLabel(db),
+    []
+  );
+  return useQuery<Map<string, number>>(fetcher, ['tasks:changed', 'labels:changed']);
+}

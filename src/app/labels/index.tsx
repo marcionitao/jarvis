@@ -4,7 +4,7 @@
 import { View, FlatList, ActivityIndicator, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { useLabels } from '@/hooks';
+import { useLabels, useLabelTaskCounts } from '@/hooks';
 import { useTheme } from '@/state/theme.store';
 import { useI18n } from '@/state/i18n.context';
 import { Text } from '@/components/ui/text';
@@ -17,6 +17,7 @@ export default function LabelsScreen() {
   const { colors } = useTheme();
   const { t } = useI18n();
   const { data: labels, loading, error, refresh } = useLabels();
+  const { data: taskCounts } = useLabelTaskCounts();
 
   const handlePress = (label: LabelDTO) => {
     router.push(`/label/${label.id}` as never);
@@ -25,7 +26,7 @@ export default function LabelsScreen() {
   const renderItem = ({ item }: { item: LabelDTO }) => (
     <LabelRow
       label={item}
-      taskCount={0}
+      taskCount={taskCounts?.get(item.id) ?? 0}
       onPress={() => handlePress(item)}
     />
   );

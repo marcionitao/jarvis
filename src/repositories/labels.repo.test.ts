@@ -74,4 +74,25 @@ describe('labels.repo', () => {
     const labels = await labelsRepo.listLabelsForTask(db, task.id);
     expect(labels).toHaveLength(1);
   });
+
+  it('countTasksPerLabel: devolve contagem correcta por label', async () => {
+    ({ db, close } = createTestDB());
+    const { create: createLabel, attachToTask } = await import('./labels.repo');
+
+    const task1 = await tasksRepo.create(db, { title: 'Tarefa 1' });
+    const task2 = await tasksRepo.create(db, { title: 'Tarefa 2' });
+    const task3 = await tasksRepo.create(db, { title: 'Tarefa 3' });
+
+    const labelA = await createLabel(db, { name: 'A', color: '#f00' });
+    const labelB = await createLabel(db, { name: 'B', color: '#0f0' });
+
+    await attachToTask(db, task1.id, labelA.id);
+    await attachToTask(db, task2.id, labelA.id);
+    await attachToTask(db, task2.id, labelB.id);
+    await attachToTask(db, task3.id, labelB.id);
+
+    const counts = await labelsRepo.countTasksPerLabel(db);
+    expect(counts.get(labelA.id)).toBe(2);
+    expect(counts.get(labelB.id)).toBe(2);
+  });
 });

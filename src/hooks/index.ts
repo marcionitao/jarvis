@@ -33,6 +33,7 @@ export {
   useDeleteLabel,
   useAttachLabel,
   useLabel,
+  useLabelTaskCounts,
 } from './use-labels';
 
 export { useLabelsForTask } from './use-labels-for-task';

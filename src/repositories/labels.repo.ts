@@ -2,7 +2,7 @@
 // Repositório de etiquetas (labels) + gestão M:N com tasks.
 // Toda mutation enfileira evento na outbox (sync-ready).
 
-import { eq, asc, and } from 'drizzle-orm';
+import { eq, asc, and, sql } from 'drizzle-orm';
 import { ulid } from 'ulid';
 import type { JarvisDB } from '@/db/client';
 import { labels, taskLabels, type Label, type NewLabel } from '@/db/schema';
@@ -102,4 +102,20 @@ export async function listLabelsForTask(db: JarvisDB, taskId: string): Promise<L
     .from(taskLabels)
     .innerJoin(labels, eq(taskLabels.labelId, labels.id))
     .where(eq(taskLabels.taskId, taskId));
+}
+
+export async function countTasksPerLabel(db: JarvisDB): Promise<Map<string, number>> {
+  const rows = await db
+    .select({
+      labelId: taskLabels.labelId,
+      count: sql<number>`count(*)`.as('count'),
+    })
+    .from(taskLabels)
+    .groupBy(taskLabels.labelId);
+
+  const map = new Map<string, number>();
+  for (const row of rows) {
+    map.set(row.labelId, Number(row.count));
+  }
+  return map;
 }
