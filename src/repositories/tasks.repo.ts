@@ -234,6 +234,19 @@ export async function searchWithFilters(
     conditions.push(eq(tasks.priority, filters.priority));
   }
 
+  if (filters.labelId !== undefined && filters.labelId !== null) {
+    const labelTasks = await db
+      .select({ taskId: taskLabels.taskId })
+      .from(taskLabels)
+      .where(eq(taskLabels.labelId, filters.labelId));
+    if (labelTasks.length > 0) {
+      const taskIds = labelTasks.map(lt => lt.taskId);
+      conditions.push(inArray(tasks.id, taskIds));
+    } else {
+      conditions.push(eq(tasks.id, '__none__'));
+    }
+  }
+
   if (filters.status === 'todo') {
     conditions.push(eq(tasks.status, 'todo'));
   } else if (filters.status === 'done') {
