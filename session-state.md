@@ -661,9 +661,76 @@ Modificar `searchWithFilters` em `tasks.repo.ts` para, quando a query começa co
 - `combina labelId com outros filtros` ✅
 
 ### Validação
-- `npm test`: **102/102 testes** ✅ (94 originais + 6 para `@label` + 2 para nome de label sem @)
+- `npm test`: **103/103 testes** ✅ (94 originais + 6 para `@label` + 2 para nome de label sem @ + 1 para `countTasksPerLabel`)
 - `npm run lint`: **0 erros** (apenas warnings pré-existentes)
 - `tsc --noEmit`: erros pré-existentes não relacionados
+
+---
+
+## 24.11 — Bug Fix: Contador de tarefas na lista de Labels (CONCLUÍDO ✅)
+
+### Diagnóstico
+Na tela `/labels` (lista de todas as etiquetas), o contador de tarefas por etiqueta mostrava sempre **0**, mesmo com tarefas associadas.
+
+**Causa:** Em `src/app/labels/index.tsx:28`, o `taskCount` estava hardcoded a `0` no componente `LabelRow`.
+
+### Solução
+1. **Repo** (`labels.repo.ts`): adicionado `countTasksPerLabel()` — query SQL com `GROUP BY taskLabels.labelId` que devolve `Map<labelId, count>`
+2. **Hook** (`use-labels.ts`): novo `useLabelTaskCounts()` que consome o repo e subscreve `['tasks:changed', 'labels:changed']`
+3. **Tela** (`labels/index.tsx`): usa `taskCounts?.get(item.id) ?? 0` para obter a contagem real
+
+### Ficheiros modificados
+| Ficheiro | Alteração |
+|----------|-----------|
+| `src/repositories/labels.repo.ts` | Import `sql`; método `countTasksPerLabel()` |
+| `src/hooks/use-labels.ts` | Hook `useLabelTaskCounts()` |
+| `src/hooks/index.ts` | Export do novo hook |
+| `src/app/labels/index.tsx` | Usa `taskCounts` no `LabelRow` |
+
+### Testes adicionados
+- `countTasksPerLabel: devolve contagem correcta por label` ✅ (testa 2 labels com 3 tasks, contagens 2 e 2)
+
+### Validação
+- `npm test`: **103/103 testes** ✅
+- `npm run lint`: **0 erros** (apenas warnings pré-existentes)
+
+---
+
+## 24.12 — Etapa 2.2: Definições / Settings (CONCLUÍDA ✅)
+
+### Objectivo
+Implementar a tela de Definições acessível do header de "Hoje" com:
+- **Tema**: Light / Dark / System
+- **Idioma**: Português (PT) / English (EN)
+- **Sobre**: versão, licenças, privacidade
+
+### Análise dos pré-requisitos (já existentes ✅)
+- `useTheme()` expõe: `mode` ('light' | 'dark' | 'system'), `setMode(mode)`, `toggle()`
+- `useI18n()` expõe: `locale` ('pt' | 'en'), `setLocale(locale)`, `t(key, params)`
+- Persistência já feita em AsyncStorage
+
+### Ficheiros criados
+| Ficheiro | Conteúdo |
+|----------|----------|
+| `src/components/settings/SettingRow.tsx` | Componente reutilizável: label + control (segmented, select, button) |
+| `src/app/settings.tsx` | Tela principal: secções Aparência, Idioma, Sobre |
+
+### Ficheiros modificados
+| Ficheiro | Alteração |
+|----------|-----------|
+| `src/app/(tabs)/index.tsx` | Header: adicionados ícones eye e settings-outline (lado direito) |
+| `src/i18n/pt.json` | Keys: `settings.*`, `language.*`, `about.*` |
+| `src/i18n/en.json` | Keys: `settings.*`, `language.*`, `about.*` |
+
+### Detalhes técnicos
+- `SettingRow` suporta 3 tipos de control: `segmented` (tema), `select` (idioma), `button` (acções)
+- Versão da app obtida via `expo-constants`
+- Botões "Licenças" e "Privacidade" são placeholders (futura implementação)
+
+### Validação
+- `npm test`: **103/103 testes** ✅
+- `npm run lint`: **0 erros** (apenas warnings pré-existentes)
+- `npx tsc --noEmit`: sem erros novos
 
 ---
 
@@ -684,3 +751,36 @@ Modificar `searchWithFilters` em `tasks.repo.ts` para, quando a query começa co
 | Ícones Ionicons `inbox` e `inbox-outline` não existem | Usar `file-tray-outline`; seed corrige instalações anteriores |
 | `useLocalSearchParams` em vez de `useSearchParams` | API correcta para esta versão do expo-router |
 | Filtro de etiqueta na Pesquisa não funciona | **RESOLVIDO.** O problema não era o `labelId` filter (esse sempre funcionou). O problema era que **digitar `@casa` na barra de pesquisa** não encontrava tarefas porque o `@casa` é removido do título durante o Quick Add. Fix: `searchWithFilters` agora deteta `@label` na query e pesquisa também por nome da label (secção 24.10). |
+| Contador de labels sempre 0 | **RESOLVIDO.** `taskCount` hardcoded a 0 em `labels/index.tsx`. Fix: `countTasksPerLabel()` no repo + hook `useLabelTaskCounts()` + uso do Map na tela (secção 24.11). |
+
+---
+
+## 25. Implementações Completas
+
+| Etapa | Descrição | Estado |
+|-------|-----------|--------|
+| 1.0 - 1.9 | Dashboard, Agenda, Quick Add, Pesquisar | ✅ Concluídas |
+| 2.0 | Detalhe do Projeto (CRUD) | ✅ Concluída |
+| 2.1 | Etiquetas (CRUD + pesquisa) | ✅ Concluída |
+| 2.2 | Definições (tema + idioma) | ✅ Concluída |
+
+## 26. Próximos Passos
+
+### 2.3 — Sincronização Cloud (placeholder)
+- Ecrã placeholder em `/settings` com opção de sync future
+- Estrutura de `SyncProvider` com estado `syncEnabled: boolean`
+- Botão "Configurar sync" (place holder — a implementação real fica para fase futura)
+
+### 2.4 — Notificações (placeholder)
+- Configuração de notificações push
+- Toggle "Notificações ativas" em Settings
+
+### Bugs / Tech Debt (prioridade)
+| Bug | Local | Prioridade |
+|-----|-------|------------|
+| `useTasksForDate` / `useTasksForMonth` — dependency array complexo | `use-tasks-for-date.ts`, `use-tasks-for-month.ts` | 🟡 Média |
+| `SearchFilters.tsx` — `key as any` no `setFilter` | `SearchFilters.tsx:77` | 🟢 Baixa |
+| `quick-add.tsx` — `mutateAsync` property error | `quick-add.tsx:142` | 🟡 Média |
+| `projectColors` index access com `p0` inexistente | `quick-add.tsx:335,339` | 🟡 Média |
+
+---

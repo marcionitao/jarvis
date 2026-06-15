@@ -119,5 +119,14 @@
   "label.menu.labels": "Etiquetas",
   "label.empty.title": "Ainda não tens etiquetas",
   "label.empty.subtitle": "Clica em + para criar a primeira etiqueta",
-  "label.empty.createFirst": "Criar primeira etiqueta"
+  "label.empty.createFirst": "Criar primeira etiqueta",
+  "settings.title": "Definições",
+  "settings.appearance": "Aparência",
+  "settings.language": "Idioma",
+  "settings.about": "Sobre",
+  "language.pt": "Português",
+  "language.en": "English",
+  "about.version": "Versão",
+  "about.licenses": "Licenças de código aberto",
+  "about.privacy": "Política de privacidade"
 }

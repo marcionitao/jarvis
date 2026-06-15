@@ -108,5 +108,14 @@
   "label.menu.labels": "Labels",
   "label.empty.title": "No labels yet",
   "label.empty.subtitle": "Tap + to create your first label",
-  "label.empty.createFirst": "Create first label"
+  "label.empty.createFirst": "Create first label",
+  "settings.title": "Settings",
+  "settings.appearance": "Appearance",
+  "settings.language": "Language",
+  "settings.about": "About",
+  "language.pt": "Português",
+  "language.en": "English",
+  "about.version": "Version",
+  "about.licenses": "Open source licenses",
+  "about.privacy": "Privacy policy"
 }

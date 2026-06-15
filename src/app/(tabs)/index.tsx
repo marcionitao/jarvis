@@ -38,18 +38,28 @@ export default function TodayScreen() {
             <Icon name="pricetag-outline" size={22} color={colors.mutedForeground} />
           </Pressable>
           <Text variant="h1">{t('tab.today')}</Text>
-          <Pressable
-            onPress={toggleShowCompleted}
-            className="p-2 active:opacity-60"
-            accessibilityRole="button"
-            accessibilityLabel={showCompleted ? t('today.hideCompleted') : t('today.showCompleted')}
-          >
-            <Icon
-              name={showCompleted ? 'eye' : 'eye-off'}
-              size={22}
-              color={colors.mutedForeground}
-            />
-          </Pressable>
+          <View className="flex-row items-center gap-1">
+            <Pressable
+              onPress={toggleShowCompleted}
+              className="p-2 active:opacity-60"
+              accessibilityRole="button"
+              accessibilityLabel={showCompleted ? t('today.hideCompleted') : t('today.showCompleted')}
+            >
+              <Icon
+                name={showCompleted ? 'eye' : 'eye-off'}
+                size={22}
+                color={colors.mutedForeground}
+              />
+            </Pressable>
+            <Pressable
+              onPress={() => router.push('/settings' as never)}
+              className="p-2 active:opacity-60"
+              accessibilityRole="button"
+              accessibilityLabel={t('settings.title')}
+            >
+              <Icon name="settings-outline" size={22} color={colors.mutedForeground} />
+            </Pressable>
+          </View>
         </View>
 
         {loading && tasks.length === 0 ? (
