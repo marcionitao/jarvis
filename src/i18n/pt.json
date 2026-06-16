@@ -128,5 +128,13 @@
   "language.en": "English",
   "about.version": "Versão",
   "about.licenses": "Licenças de código aberto",
-  "about.privacy": "Política de privacidade"
+  "about.privacy": "Política de privacidade",
+  "settings.notifications": "Notificações",
+  "notifications.enable": "Ativar notificações",
+  "notifications.active": "Ativas",
+  "notifications.inactive": "Inativas",
+  "notifications.permissionTitle": "Permissão necessária",
+  "notifications.permissionMessage": "Para receber lembretes, ative as notificações nas definições do dispositivo.",
+  "notifications.openSettings": "Abrir definições",
+  "notifications.scheduled": "Lembrete agendado"
 }

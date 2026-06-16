@@ -10,6 +10,7 @@ import Constants from 'expo-constants';
 import { SettingRow } from '@/components/settings/SettingRow';
 import { useTheme } from '@/state/theme.store';
 import { useI18n } from '@/state/i18n.context';
+import { useNotifications } from '@/hooks/use-notifications';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
@@ -17,6 +18,7 @@ import { Icon } from '@/components/ui/icon';
 export default function SettingsScreen() {
   const { colors, mode, setMode } = useTheme();
   const { t, locale, setLocale } = useI18n();
+  const { enabled, toggleEnabled } = useNotifications();
   const [showLanguageModal, setShowLanguageModal] = useState(false);
 
   const themeOptions = [
@@ -75,6 +77,21 @@ export default function SettingsScreen() {
                 options={languageOptions}
                 value={locale}
                 onPress={() => setShowLanguageModal(true)}
+              />
+            </View>
+          </View>
+
+          {/* Notificações */}
+          <View className="mb-4">
+            <Text variant="caption" className="px-5 py-2 text-muted-foreground uppercase tracking-wider">
+              {t('settings.notifications')}
+            </Text>
+            <View className="bg-card border-y border-border">
+              <SettingRow
+                label={t('settings.notifications')}
+                type="button"
+                value={enabled ? t('notifications.active') : t('notifications.inactive')}
+                onPress={toggleEnabled}
               />
             </View>
           </View>

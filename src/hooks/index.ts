@@ -48,3 +48,6 @@ export { useTasksSearch } from './use-tasks-search';
 export type { SearchFilters } from './use-tasks-search';
 
 export { useDebounce } from './use-debounce';
+
+export { useNotifications } from './use-notifications';
+export type { NotificationPermissionStatus } from './use-notifications';

@@ -763,6 +763,7 @@ Implementar a tela de Definições acessível do header de "Hoje" com:
 | 2.0 | Detalhe do Projeto (CRUD) | ✅ Concluída |
 | 2.1 | Etiquetas (CRUD + pesquisa) | ✅ Concluída |
 | 2.2 | Definições (tema + idioma) | ✅ Concluída |
+| 2.4 | Notificações (toggle + scheduling) | ✅ Concluída |
 
 ## 26. Próximos Passos
 
@@ -770,10 +771,6 @@ Implementar a tela de Definições acessível do header de "Hoje" com:
 - Ecrã placeholder em `/settings` com opção de sync future
 - Estrutura de `SyncProvider` com estado `syncEnabled: boolean`
 - Botão "Configurar sync" (place holder — a implementação real fica para fase futura)
-
-### 2.4 — Notificações (placeholder)
-- Configuração de notificações push
-- Toggle "Notificações ativas" em Settings
 
 ### Bugs / Tech Debt (prioridade)
 | Bug | Local | Prioridade |

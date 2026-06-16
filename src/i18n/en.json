@@ -117,5 +117,13 @@
   "language.en": "English",
   "about.version": "Version",
   "about.licenses": "Open source licenses",
-  "about.privacy": "Privacy policy"
+  "about.privacy": "Privacy policy",
+  "settings.notifications": "Notifications",
+  "notifications.enable": "Enable notifications",
+  "notifications.active": "Active",
+  "notifications.inactive": "Inactive",
+  "notifications.permissionTitle": "Permission required",
+  "notifications.permissionMessage": "To receive reminders, enable notifications in your device settings.",
+  "notifications.openSettings": "Open settings",
+  "notifications.scheduled": "Reminder scheduled"
 }

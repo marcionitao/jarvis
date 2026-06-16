@@ -1,17 +1,17 @@
 // src/app/(tabs)/search.tsx
 // Tela de pesquisa com search bar + filtros + lista de resultados.
 
-import { View, FlatList, ActivityIndicator } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Text } from '@/components/ui/text';
-import { Icon } from '@/components/ui/icon';
-import { useTheme } from '@/state/theme.store';
-import { useI18n } from '@/state/i18n.context';
-import { useTasksSearch } from '@/hooks';
 import { SearchBar } from '@/components/search/SearchBar';
 import { SearchFilters } from '@/components/search/SearchFilters';
 import { TaskRow } from '@/components/tasks/TaskRow';
+import { Icon } from '@/components/ui/icon';
+import { Text } from '@/components/ui/text';
+import { useTasksSearch } from '@/hooks';
 import type { TaskDTO } from '@/repositories/tasks.repo';
+import { useI18n } from '@/state/i18n.context';
+import { useTheme } from '@/state/theme.store';
+import { ActivityIndicator, FlatList, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function SearchScreen() {
   const { colors } = useTheme();
@@ -29,7 +29,7 @@ export default function SearchScreen() {
     filters.priority !== undefined ||
     filters.projectId !== undefined ||
     filters.labelId !== undefined ||
-    filters.status !== 'all';
+    filters.status !== 'all'
 
   const renderTask = ({ item }: { item: TaskDTO }) => <TaskRow task={item} />;
 
