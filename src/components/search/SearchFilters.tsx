@@ -41,13 +41,37 @@ export function SearchFilters({ filters, setFilter, onClear }: SearchFiltersProp
     filters.labelId !== null ||
     filters.status !== 'all';
 
-  const statusOptions: FilterOption[] = [
+  
+
+  const renderChip = (option: FilterOption, isSelected: boolean, filterType: 'status' | 'priority' | 'projectId' | 'labelId') => (
+    <Pressable
+      key={String(option.value)}
+      onPress={() => setFilter(filterType, option.value)}
+      className={cn(
+        'px-3 py-1.5 rounded-full border items-center',
+        isSelected
+          ? 'border-transparent'
+          : 'border-border bg-transparent'
+      )}
+      style={isSelected && option.color ? { backgroundColor: option.color + '33' } : undefined}
+    >
+      <Text
+        variant="caption"
+        className={cn('font-medium', isSelected ? 'text-foreground' : 'text-muted-foreground')}
+        style={isSelected && option.color ? { color: option.color } : undefined}
+      >
+        {option.label}
+      </Text>
+    </Pressable>
+  );
+
+  const statusOptions = [
     { label: t('search.status.all') ?? 'Todas', value: 'all' },
     { label: t('search.status.todo') ?? 'Por fazer', value: 'todo' },
     { label: t('search.status.done') ?? 'Concluídas', value: 'done' },
   ];
 
-  const priorityOptions: FilterOption[] = [
+  const priorityOptions = [
     { label: t('search.priority.all') ?? 'Todos', value: null },
     { label: 'P1', value: 1 },
     { label: 'P2', value: 2 },
@@ -55,27 +79,90 @@ export function SearchFilters({ filters, setFilter, onClear }: SearchFiltersProp
     { label: 'P4', value: 4 },
   ];
 
-  const projectOptions: FilterOption[] = [
+  const projectOptions = [
     { label: t('search.project.all') ?? 'Todos', value: null },
     ...(projects?.map((p) => ({ label: p.name, value: p.id, color: p.color })) ?? []),
   ];
 
-  const labelOptions: FilterOption[] = [
+  const labelOptions = [
     { label: t('search.label.all') ?? 'Todas', value: null },
     ...(labels?.map((l) => ({ label: `@${l.name}`, value: l.id, color: l.color })) ?? []),
   ];
 
-  const renderChip = (option: FilterOption, isSelected: boolean) => (
+  const handleChipPress = (filterType: 'status' | 'priority' | 'projectId' | 'labelId', value: FilterOption['value']) => {
+    setFilter(filterType, value);
+  };
+
+  const renderStatusChip = (option: typeof statusOptions[number], isSelected: boolean) => (
     <Pressable
       key={String(option.value)}
-      onPress={() => {
-        const key = option.value === 'all' || option.value === 'todo' || option.value === 'done' ? 'status'
-          : typeof option.value === 'number' ? 'priority'
-          : option.value === null ? null
-          : option.value === filters.projectId ? 'projectId'
-          : 'labelId';
-        if (key) setFilter(key as any, option.value);
-      }}
+      onPress={() => handleChipPress('status', option.value)}
+      className={cn(
+        'px-3 py-1.5 rounded-full border items-center',
+        isSelected
+          ? 'border-transparent'
+          : 'border-border bg-transparent'
+      )}
+      style={isSelected && option.color ? { backgroundColor: option.color + '33' } : undefined}
+    >
+      <Text
+        variant="caption"
+        className={cn('font-medium', isSelected ? 'text-foreground' : 'text-muted-foreground')}
+        style={isSelected && option.color ? { color: option.color } : undefined}
+      >
+        {option.label}
+      </Text>
+    </Pressable>
+  );
+
+  const renderPriorityChip = (option: typeof priorityOptions[number], isSelected: boolean) => (
+    <Pressable
+      key={String(option.value)}
+      onPress={() => handleChipPress('priority', option.value)}
+      className={cn(
+        'px-3 py-1.5 rounded-full border items-center',
+        isSelected
+          ? 'border-transparent'
+          : 'border-border bg-transparent'
+      )}
+      style={isSelected && option.color ? { backgroundColor: option.color + '33' } : undefined}
+    >
+      <Text
+        variant="caption"
+        className={cn('font-medium', isSelected ? 'text-foreground' : 'text-muted-foreground')}
+        style={isSelected && option.color ? { color: option.color } : undefined}
+      >
+        {option.label}
+      </Text>
+    </Pressable>
+  );
+
+  const renderProjectChip = (option: typeof projectOptions[number], isSelected: boolean) => (
+    <Pressable
+      key={String(option.value)}
+      onPress={() => handleChipPress('projectId', option.value)}
+      className={cn(
+        'px-3 py-1.5 rounded-full border items-center',
+        isSelected
+          ? 'border-transparent'
+          : 'border-border bg-transparent'
+      )}
+      style={isSelected && option.color ? { backgroundColor: option.color + '33' } : undefined}
+    >
+      <Text
+        variant="caption"
+        className={cn('font-medium', isSelected ? 'text-foreground' : 'text-muted-foreground')}
+        style={isSelected && option.color ? { color: option.color } : undefined}
+      >
+        {option.label}
+      </Text>
+    </Pressable>
+  );
+
+  const renderLabelChip = (option: typeof labelOptions[number], isSelected: boolean) => (
+    <Pressable
+      key={String(option.value)}
+      onPress={() => handleChipPress('labelId', option.value)}
       className={cn(
         'px-3 py-1.5 rounded-full border items-center',
         isSelected
@@ -118,7 +205,7 @@ export function SearchFilters({ filters, setFilter, onClear }: SearchFiltersProp
           <View className="gap-2">
             <Text variant="caption" className="text-muted-foreground">Status</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-2">
-              {statusOptions.map((opt) => renderChip(opt, filters.status === opt.value))}
+              {statusOptions.map((opt) => renderStatusChip(opt, filters.status === opt.value))}
             </ScrollView>
           </View>
 
@@ -126,7 +213,7 @@ export function SearchFilters({ filters, setFilter, onClear }: SearchFiltersProp
           <View className="gap-2">
             <Text variant="caption" className="text-muted-foreground">Prioridade</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-2">
-              {priorityOptions.map((opt) => renderChip(opt, filters.priority === opt.value))}
+              {priorityOptions.map((opt) => renderPriorityChip(opt, filters.priority === opt.value))}
             </ScrollView>
           </View>
 
@@ -134,7 +221,7 @@ export function SearchFilters({ filters, setFilter, onClear }: SearchFiltersProp
           <View className="gap-2">
             <Text variant="caption" className="text-muted-foreground">Projeto</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-2">
-              {projectOptions.map((opt) => renderChip(opt, filters.projectId === opt.value))}
+              {projectOptions.map((opt) => renderProjectChip(opt, filters.projectId === opt.value))}
             </ScrollView>
           </View>
 
@@ -142,7 +229,7 @@ export function SearchFilters({ filters, setFilter, onClear }: SearchFiltersProp
           <View className="gap-2">
             <Text variant="caption" className="text-muted-foreground">Etiqueta</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-2">
-              {labelOptions.map((opt) => renderChip(opt, filters.labelId === opt.value))}
+              {labelOptions.map((opt) => renderLabelChip(opt, filters.labelId === opt.value))}
             </ScrollView>
           </View>
         </View>

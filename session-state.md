@@ -775,9 +775,8 @@ Implementar a tela de Definições acessível do header de "Hoje" com:
 ### Bugs / Tech Debt (prioridade)
 | Bug | Local | Prioridade |
 |-----|-------|------------|
-| `useTasksForDate` / `useTasksForMonth` — dependency array complexo | `use-tasks-for-date.ts`, `use-tasks-for-month.ts` | 🟡 Média |
-| `SearchFilters.tsx` — `key as any` no `setFilter` | `SearchFilters.tsx:77` | 🟢 Baixa |
-| `quick-add.tsx` — `mutateAsync` property error | `quick-add.tsx:142` | 🟡 Média |
-| `projectColors` index access com `p0` inexistente | `quick-add.tsx:335,339` | 🟡 Média |
+| `useTasksForDate` / `useTasksForMonth` — dependency array complexo | `use-tasks-for-date.ts:13`, `use-tasks-for-month.ts:18` | 🟡 Média ✅ (correção concluída) |
+| `SearchFilters.tsx` — `key as any` no `setFilter` | `SearchFilters.tsx:77` | 🟢 Baixa ✅ (correção concluída) |
+| `quick-add.tsx` — `mutateAsync` property error | `quick-add.tsx:142` | 🟡 Média ✅ (correção concluída) |
 
 ---

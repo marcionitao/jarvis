@@ -2,7 +2,6 @@
 // Hook para obter tarefas de um mês inteiro (para marcar dias no calendário).
 
 import { useCallback } from 'react';
-import { startOfMonth, endOfMonth } from 'date-fns';
 import * as tasksRepo from '@/repositories/tasks.repo';
 import type { TaskDTO } from '@/repositories/tasks.repo';
 import { useQuery } from './use-query';
