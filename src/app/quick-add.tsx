@@ -139,7 +139,7 @@ export default function QuickAdd() {
 
   const handleCreateLabel = async () => {
     if (!newLabelText.trim()) return;
-    const created = await createLabel.mutateAsync({
+    const created = await createLabel.mutate({
       name: newLabelText.trim(),
       color: priorityColors.p2,
     });
