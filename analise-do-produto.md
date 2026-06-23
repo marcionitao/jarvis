@@ -264,7 +264,7 @@ Carregamento via `expo-font` com `useFonts` no root `_layout.tsx`. Splash screen
 | 2 | **Agenda** | Vista mensal (react-native-calendars). Dots nas datas com tarefas. |
 | 3 | **[FAB central]** | Não navega como tab. Abre modal Quick Add. Botão circular elevado com sombra e animação de pressão. |
 | 4 | **Pesquisar** | Pesquisa full-text + filtros (projeto, prioridade, data, etiqueta). |
-| 5 | **Projetos** | Lista de projetos. Tap → detalhe. Long press → reordenar. |
+| 5 | **Projetos** | Lista de projetos. Tap → detalhe. Long press → reordenar. **Shopping List** acessível aqui (project.type="shopping"). |
 
 ### Telas em stack / modal
 
@@ -272,6 +272,7 @@ Carregamento via `expo-font` com `useFonts` no root `_layout.tsx`. Splash screen
 - **Tarefa criar/editar** — formulário (RHF + Zod + NativeWind + shadcn).
 - **Projeto detalhe** — lista de tarefas do projeto + metadata.
 - **Projeto criar/editar** — formulário.
+- **Shopping List** — lista de compras (checklist) com agrupamento por secção (Label). Acessível a partir de Projetos.
 - **Próximas** — próximos 7 dias agrupados por data (acessível a partir do header de "Hoje" ou "Agenda").
 - **Etiquetas** — gestão (criar, renomear, eliminar). Acessível a partir de "Projetos" e filtros.
 - **Definições** — notificações, aparência, idioma, sobre. Acessível a partir do header de "Hoje".
@@ -397,10 +398,11 @@ projects {
   name: string
   color: string             // hex
   icon: string              // symbol name
+  type: 'default' | 'shopping'  // NOVO: tipo de projeto
   parentId: ULID?           // subprojetos
   order: number
   archivedAt: number?       // soft delete
-  createdAt: number
+  createdAtualCreatedAt: number
   updatedAt: number
   clientUpdatedAt: number
   syncStatus: 'local' | 'pending' | 'synced'
@@ -545,6 +547,7 @@ outbox {
 | 13 | Fonte principal | **Inter** | 4 pesos (Regular, Medium, Semibold, Bold). SpaceMono mantida para uso pontual (timestamps, IDs). |
 | 14 | Context menu | **`react-native-context-menu-view`** | Lib confirmada pelo utilizador. Usada no long press de tarefas (editar, duplicar, mover, eliminar). |
 | 15 | Bottom tabs | **`@bottom-tabs/react-navigation`** | Substitui `@react-navigation/bottom-tabs`. Compatível com Expo Router via `withLayoutContext`. Requer Development Build (não corre em Expo Go — aceitável para Android only). |
+| 16 | Shopping List | **Sim** (reutiliza Project+Task) | Novo `Project.type = "shopping"`. Lista de compras nativa (checklist) reutilizando Project+Task+Label. Parser Quick Add especial: `item qty #secção`. |
 
 ### 8.2 Decisão sobre gestão de estado (Zustand vs Context + Hooks)
 

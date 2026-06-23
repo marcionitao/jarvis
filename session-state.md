@@ -778,5 +778,98 @@ Implementar a tela de Definições acessível do header de "Hoje" com:
 | `useTasksForDate` / `useTasksForMonth` — dependency array complexo | `use-tasks-for-date.ts:13`, `use-tasks-for-month.ts:18` | 🟡 Média ✅ (correção concluída) |
 | `SearchFilters.tsx` — `key as any` no `setFilter` | `SearchFilters.tsx:77` | 🟢 Baixa ✅ (correção concluída) |
 | `quick-add.tsx` — `mutateAsync` property error | `quick-add.tsx:142` | 🟡 Média ✅ (correção concluída) |
+| **Splash full-screen Android** — `expo-splash-screen` não suporta full-screen nativo; Config Plugin falhou (SplashTheme não criado no styles.xml); imagem `splash-jarvis.png` 1284x2778 não preenche ecrã | `app.json`, `plugins/splash-fullscreen.plugin.js`, `android/` nativo | 🟡 Média ❌ **PENDENTE** |
 
 ---
+
+### Splash Full-Screen Android — Resumo do Problema (Não Resolvido)
+
+**O que se tentou:**
+1. `expo-splash-screen` plugin — imagem centrada, não full-screen
+2. Config Plugin custom — falhou: `SplashTheme` não criado no `styles.xml` durante `prebuild`
+3. Imagem `splash-jarvis.png` (1284x2778) — aspect ratio 9:19.5, não preenche ecrã
+
+**Causa raiz:** `expo-splash-screen` **não suporta** full-screen no Android nativamente. Requer:
+- Config Plugin que crie `launch_screen.xml` com `gravity="fill"` + `SplashTheme` no `styles.xml`
+- O plugin criado falhou no `withAndroidStyles` (não escreveu no `styles.xml`)
+
+**Solução pendente:** Fixar o Config Plugin ou editar nativo manualmente pós-prebuild.
+
+---
+
+## Próximos Passos — Funcionalidades a Implementar
+
+### 2.3 — Sincronização Cloud (Placeholder)
+- Ecrã placeholder em `/settings` com toggle `syncEnabled`
+- Estrutura `SyncProvider` com estado `syncEnabled: boolean`
+- Botão "Configurar sync" (placeholder — implementação real futura)
+
+### 2.5 — Outras Funcionalidades Prioritárias
+| Funcionalidade | Descrição | Prioridade |
+|----------------|-----------|------------|
+| **Recurring Tasks** | Tarefas recorrentes (diário, semanal, mensal) | 🔴 Alta |
+| **Subtasks / Checklists** | Sub-tarefas dentro de uma tarefa | 🔴 Alta |
+| **Shopping List** | Lista de compras (checklist) — reutiliza Project+Task | 🔴 Alta |
+| **Time Tracking** | Timer/Pomodoro por tarefa | 🟡 Média |
+| **Export/Import** | Backup JSON/CSV dos dados | 🟡 Média |
+| **Dark Mode Refinement** | Cores específicas por tema | 🟢 Baixa |
+
+### 2.5.1 — Shopping List (Lista de Compras / Checklist)
+**Objetivo:** Lista de compras nativa (checklist) reutilizando Project+Task existentes.
+
+**Arquitetura:**
+- Project.type = "shopping" (novo enum em Project)
+- Task = item da lista (status = todo/done = checked/unchecked)
+- Labels = secções (Laticínios, Frutas, Mercearia...)
+- Quick Add parser especial: `leite 2L #laticínios`
+
+**Implementação (3.5 dias — 5 fases):**
+
+| Fase | Entregável | Esforço |
+|------|------------|---------|
+| 1. Schema + Repo | `Project.type` enum ("default" | "shopping") + migration | 1 dia |
+| 2. Quick Add Parser | Parsing especial: `leite 2L #laticínios` → qty + label | 0.5 dias |
+| 3. ShoppingListScreen | Nova screen (reutiliza ProjectDetail) + agrupamento por Label | 1.5 dias |
+| 4. Integração Home | Acesso rápido à lista ativa + empty states | 0.5 dias |
+| 5. Polish | Limpar marcados, histórico, empty states, bulk actions | 0.5 dias |
+| **Total** | | **~3.5 dias** |
+
+**Schema Changes (Mínimos):**
+- `Project.type` enum: "default" | "shopping" (default: "default")
+- Parser Quick Add detecta projectId = shopping list → parser especial
+- Labels = secções (Laticínios, Frutas, Mercearia, Mercearia, Bebidas, Limpeza, Outros)
+
+**UI/UX:**
+- Acesso via tab "Projetos" → lista shopping ativa ou cria nova
+- Header: "Lista de Compras" + botão "Limpar marcados"
+- Agrupado por Label (secção) com headers colapsáveis
+- Swipe/long press → actions (edit qty, delete)
+- Empty state: "Adiciona itens com Quick Add: `leite 2L #laticínios`"
+
+**Parser Quick Add (shopping mode):**
+```
+Input: "leite 2L #laticínios"
+→ title: "leite"
+→ description: "2L"
+→ label: "laticínios"
+→ projectId: shopping list ativa
+```
+
+---
+
+## Próximos Passos — Funcionalidades a Implementar
+
+### Tech Debt / Bugs Prioritários
+| Bug | Local | Prioridade |
+|-----|-------|------------|
+| Splash full-screen Android | `app.json`, `plugins/`, `android/` | 🟡 Média |
+| `projectColors` index access `p0` inexistente | `quick-add.tsx:335,339` | 🟡 Média |
+| `SearchFilters.tsx` — `key as any` | `SearchFilters.tsx:77` | 🟢 Baixa |
+
+---
+
+## Próxima Ação Recomendada
+
+**Sugestão:** Avançar para **Recurring Tasks** (funcionalidade core) e deixar o Splash full-screen para resolver depois com edição nativa directa (pós-prebuild, sem Config Plugin).
+
+Ou: Resolve o Splash com edição nativa directa (edita `android/app/src/main/res/values/styles.xml` + `launch_screen.xml` após `prebuild`).
