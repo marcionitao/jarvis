@@ -22,6 +22,7 @@ export const projects = sqliteTable(
     name: text('name').notNull(),
     color: text('color').notNull(),
     icon: text('icon').notNull(),
+    type: text('type', { enum: ['default', 'shopping'] }).default('default'),
     parentId: text('parent_id'),
     order: integer('order').notNull(),
     archivedAt: integer('archived_at'),

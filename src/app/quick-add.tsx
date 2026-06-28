@@ -26,6 +26,7 @@ import { useTheme } from '@/state/theme.store';
 import { useI18n } from '@/state/i18n.context';
 import { useQuickAdd } from '@/hooks/use-quick-add';
 import { useLabels, useCreateLabel } from '@/hooks/use-labels';
+import { useProject } from '@/hooks/use-projects';
 
 import { parseQuickAdd } from '@/services/quick-capture.service';
 import { cn } from '@/lib/cn';
@@ -92,6 +93,10 @@ export default function QuickAdd() {
 
   // Lê o project da URL (?project=ID) para associar a tarefa ao projecto correcto.
   const { project: projectId } = useLocalSearchParams<{ project?: string }>();
+
+  // Verifica se o projecto é do tipo shopping
+  const { data: project } = useProject(projectId ?? null);
+  const isShoppingProject = project?.type === 'shopping';
 
   const [text, setText] = useState('');
 
@@ -197,132 +202,139 @@ export default function QuickAdd() {
             autoFocus
             value={text}
             onChangeText={setText}
-            placeholder={t('task.quickAdd.placeholder')}
+            placeholder={isShoppingProject ? t('shopping.empty.hint') : t('task.quickAdd.placeholder')}
             placeholderTextColor={colors.mutedForeground}
             multiline
             className={cn('min-h-[80px] p-3 rounded-lg border bg-input text-foreground text-base', 'border-inputBorder')}
             style={{ textAlignVertical: 'top' }}
           />
 
-          {text.length > 0 && <Text variant="caption">{t('task.quickAdd.hint')}</Text>}
+          {text.length > 0 && !isShoppingProject && <Text variant="caption">{t('task.quickAdd.hint')}</Text>}
+          {text.length > 0 && isShoppingProject && <Text variant="caption" className="text-muted-foreground font-mono">{t('shopping.empty.hint')}</Text>}
 
-          {/* Priority picker */}
-          <View className="gap-2">
-            <Text variant="caption" className="text-muted-foreground">{t('task.priority.label') || 'Prioridade'}</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-2">
-              {priorityOptions.map((opt) => {
-                const selected = priority === opt.value;
-                return (
-                  <Pressable
-                    key={opt.value}
-                    onPress={() => setPriority(opt.value)}
-                    className={cn(
-                      'px-4 py-2 rounded-full border',
-                      selected ? 'border-transparent' : 'border-border bg-transparent'
-                    )}
-                    style={selected ? { backgroundColor: opt.color + '22' } : undefined}
-                  >
-                    <Text
-                      variant="caption"
-                      className="font-semibold"
-                      style={{ color: selected ? opt.color : colors.mutedForeground }}
-                    >
-                      {opt.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-          </View>
+          {!isShoppingProject && (
+            <>
+              {/* Priority picker */}
+              <View className="gap-2">
+                <Text variant="caption" className="text-muted-foreground">{t('task.priority.label') || 'Prioridade'}</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-2">
+                  {priorityOptions.map((opt) => {
+                    const selected = priority === opt.value;
+                    return (
+                      <Pressable
+                        key={opt.value}
+                        onPress={() => setPriority(opt.value)}
+                        className={cn(
+                          'px-4 py-2 rounded-full border',
+                          selected ? 'border-transparent' : 'border-border bg-transparent'
+                        )}
+                        style={selected ? { backgroundColor: opt.color + '22' } : undefined}
+                      >
+                        <Text
+                          variant="caption"
+                          className="font-semibold"
+                          style={{ color: selected ? opt.color : colors.mutedForeground }}
+                        >
+                          {opt.label}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              </View>
 
-          {/* Date picker */}
-          <View className="gap-2">
-            <Text variant="caption" className="text-muted-foreground">{t('task.date.label') || 'Data'}</Text>
-            <View className="flex-row gap-2">
-              {dateOptions.map((opt) => {
-                const selected = datePick === opt.value;
-                return (
-                  <Pressable
-                    key={opt.value}
-                    onPress={opt.value === 'custom' ? () => setShowDateModal(true) : () => setDatePick(opt.value)}
-                    className={cn(
-                      'flex-1 px-3 py-2 rounded-lg border items-center',
-                      selected ? 'border-primary bg-primary/10' : 'border-border bg-transparent'
-                    )}
-                  >
-                    <Text
-                      variant="caption"
-                      className={cn('font-medium', selected ? 'text-primary' : 'text-foreground')}
-                    >
-                      {opt.label}
-                    </Text>
-                    {opt.value === 'custom' && customDate && (
-                      <Text variant="caption" className="text-muted-foreground" style={{ fontSize: 10 }}>
-                        {format(customDate, 'dd/MM')}
-                      </Text>
-                    )}
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-
-          {/* Label picker */}
-          <View className="gap-2">
-            <Text variant="caption" className="text-muted-foreground">{t('task.labels') || 'Etiquetas'}</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-2">
-              {showNewLabelInput ? (
-                <View className="flex-row items-center gap-2 bg-muted px-3 py-2 rounded-full">
-                  <RNTextInput
-                    value={newLabelText}
-                    onChangeText={setNewLabelText}
-                    placeholder="nome"
-                    placeholderTextColor={colors.mutedForeground}
-                    className="text-foreground text-sm min-w-[60px] max-w-[100px]"
-                    autoFocus
-                    onSubmitEditing={handleCreateLabel}
-                    returnKeyType="done"
-                  />
-                  <Pressable onPress={handleCreateLabel} className="p-1">
-                    <Icon name="checkmark" size={16} color={colors.primary} />
-                  </Pressable>
-                  <Pressable onPress={() => { setShowNewLabelInput(false); setNewLabelText(''); }} className="p-1">
-                    <Icon name="close" size={16} color={colors.mutedForeground} />
-                  </Pressable>
+              {/* Date picker */}
+              <View className="gap-2">
+                <Text variant="caption" className="text-muted-foreground">{t('task.date.label') || 'Data'}</Text>
+                <View className="flex-row gap-2">
+                  {dateOptions.map((opt) => {
+                    const selected = datePick === opt.value;
+                    return (
+                      <Pressable
+                        key={opt.value}
+                        onPress={opt.value === 'custom' ? () => setShowDateModal(true) : () => setDatePick(opt.value)}
+                        className={cn(
+                          'flex-1 px-3 py-2 rounded-lg border items-center',
+                          selected ? 'border-primary bg-primary/10' : 'border-border bg-transparent'
+                        )}
+                      >
+                        <Text
+                          variant="caption"
+                          className={cn('font-medium', selected ? 'text-primary' : 'text-foreground')}
+                        >
+                          {opt.label}
+                        </Text>
+                        {opt.value === 'custom' && customDate && (
+                          <Text variant="caption" className="text-muted-foreground" style={{ fontSize: 10 }}>
+                            {format(customDate, 'dd/MM')}
+                          </Text>
+                        )}
+                      </Pressable>
+                    );
+                  })}
                 </View>
-              ) : (
-                <Pressable
-                  onPress={() => setShowNewLabelInput(true)}
-                  className="px-3 py-2 rounded-full border border-dashed border-border items-center justify-center"
-                  style={{ minWidth: 48 }}
-                >
-                  <Icon name="add" size={16} color={colors.mutedForeground} />
-                </Pressable>
-              )}
-              {labels?.map((label) => {
-                const selected = selectedLabels.includes(label.name);
-                return (
+              </View>
+            </>
+          )}
+
+          {/* Label picker — escondido em modo shopping */}
+          {!isShoppingProject && (
+            <View className="gap-2">
+              <Text variant="caption" className="text-muted-foreground">{t('task.labels') || 'Etiquetas'}</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-2">
+                {showNewLabelInput ? (
+                  <View className="flex-row items-center gap-2 bg-muted px-3 py-2 rounded-full">
+                    <RNTextInput
+                      value={newLabelText}
+                      onChangeText={setNewLabelText}
+                      placeholder="nome"
+                      placeholderTextColor={colors.mutedForeground}
+                      className="text-foreground text-sm min-w-[60px] max-w-[100px]"
+                      autoFocus
+                      onSubmitEditing={handleCreateLabel}
+                      returnKeyType="done"
+                    />
+                    <Pressable onPress={handleCreateLabel} className="p-1">
+                      <Icon name="checkmark" size={16} color={colors.primary} />
+                    </Pressable>
+                    <Pressable onPress={() => { setShowNewLabelInput(false); setNewLabelText(''); }} className="p-1">
+                      <Icon name="close" size={16} color={colors.mutedForeground} />
+                    </Pressable>
+                  </View>
+                ) : (
                   <Pressable
-                    key={label.id}
-                    onPress={() => toggleLabel(label.name)}
-                    className={cn(
-                      'px-3 py-2 rounded-full border',
-                      selected ? 'border-transparent' : 'border-border bg-transparent'
-                    )}
-                    style={selected ? { backgroundColor: label.color + '33' } : undefined}
+                    onPress={() => setShowNewLabelInput(true)}
+                    className="px-3 py-2 rounded-full border border-dashed border-border items-center justify-center"
+                    style={{ minWidth: 48 }}
                   >
-                    <Text
-                      variant="caption"
-                      className="font-medium"
-                      style={{ color: selected ? label.color : colors.foreground }}
-                    >
-                      @{label.name}
-                    </Text>
+                    <Icon name="add" size={16} color={colors.mutedForeground} />
                   </Pressable>
-                );
-              })}
-            </ScrollView>
-          </View>
+                )}
+                {labels?.map((label) => {
+                  const selected = selectedLabels.includes(label.name);
+                  return (
+                    <Pressable
+                      key={label.id}
+                      onPress={() => toggleLabel(label.name)}
+                      className={cn(
+                        'px-3 py-2 rounded-full border',
+                        selected ? 'border-transparent' : 'border-border bg-transparent'
+                      )}
+                      style={selected ? { backgroundColor: label.color + '33' } : undefined}
+                    >
+                      <Text
+                        variant="caption"
+                        className="font-medium"
+                        style={{ color: selected ? label.color : colors.foreground }}
+                      >
+                        @{label.name}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          )}
 
           {/* Preview — shows what will be submitted */}
           {preview.title.length > 0 && (

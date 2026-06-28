@@ -70,7 +70,11 @@ export default function ProjectsScreen() {
             keyExtractor={(item) => item.id}
             renderItem={({ item }) => (
               <Pressable
-                onPress={() => router.push(`/project/${item.id}`)}
+                onPress={() =>
+                  item.type === 'shopping'
+                    ? router.push(`/shopping-list/${item.id}`)
+                    : router.push(`/project/${item.id}`)
+                }
                 className="px-5 py-3 flex-row items-center gap-3 border-b border-border active:opacity-60"
               >
                 <View

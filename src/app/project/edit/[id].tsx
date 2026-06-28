@@ -59,6 +59,7 @@ export default function EditProjectScreen() {
   const [name, setName] = useState('');
   const [selectedColor, setSelectedColor] = useState<ProjectColor>(projectColors[0]);
   const [selectedIcon, setSelectedIcon] = useState<IoniconsName>('folder-outline');
+  const [selectedType, setSelectedType] = useState<'default' | 'shopping'>('default');
 
   // Pré-preencher com os dados actuais do projecto.
   useEffect(() => {
@@ -66,12 +67,14 @@ export default function EditProjectScreen() {
       setName(project.name);
       setSelectedColor(project.color as ProjectColor);
       setSelectedIcon(project.icon as IoniconsName);
+      setSelectedType((project.type as 'default' | 'shopping') ?? 'default');
     }
   }, [project]);
 
   const handleSave = async () => {
     if (!name.trim()) return;
-    await updateProject.mutate(id!, { name: name.trim(), color: selectedColor, icon: selectedIcon });
+    const icon = selectedType === 'shopping' ? 'cart-outline' : selectedIcon;
+    await updateProject.mutate(id!, { name: name.trim(), color: selectedColor, icon, type: selectedType });
     router.back();
   };
 
@@ -157,6 +160,45 @@ export default function EditProjectScreen() {
           </View>
         </View>
 
+        {/* Tipo */}
+        <View className="mb-8">
+          <Text variant="label" className="text-foreground mb-3">{t('project.edit.typeLabel')}</Text>
+          <View className="flex-row gap-3">
+            <Pressable
+              onPress={() => setSelectedType('default')}
+              className={cn(
+                'flex-1 px-4 py-3 rounded-lg border items-center',
+                selectedType === 'default' ? 'border-primary bg-primary/10' : 'border-border bg-transparent'
+              )}
+            >
+              <Icon name="folder-outline" size={20} color={selectedType === 'default' ? colors.primary : colors.mutedForeground} />
+              <Text
+                variant="caption"
+                className="mt-1"
+                style={{ color: selectedType === 'default' ? colors.primary : colors.mutedForeground }}
+              >
+                {t('project.edit.typeDefault')}
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setSelectedType('shopping')}
+              className={cn(
+                'flex-1 px-4 py-3 rounded-lg border items-center',
+                selectedType === 'shopping' ? 'border-primary bg-primary/10' : 'border-border bg-transparent'
+              )}
+            >
+              <Icon name="cart-outline" size={20} color={selectedType === 'shopping' ? colors.primary : colors.mutedForeground} />
+              <Text
+                variant="caption"
+                className="mt-1"
+                style={{ color: selectedType === 'shopping' ? colors.primary : colors.mutedForeground }}
+              >
+                {t('project.edit.typeShopping')}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+
         {/* Preview */}
         <View className="items-center py-4 border-t border-border">
           <Text variant="caption" className="text-muted-foreground mb-3">Preview</Text>
@@ -164,11 +206,14 @@ export default function EditProjectScreen() {
             className="w-14 h-14 rounded-xl items-center justify-center"
             style={{ backgroundColor: selectedColor }}
           >
-            <Icon name={selectedIcon} size={28} color="#ffffff" />
+            <Icon name={selectedType === 'shopping' ? 'cart-outline' : selectedIcon} size={28} color="#ffffff" />
           </View>
           <Text variant="body" className="mt-2 text-center" numberOfLines={1}>
             {name || t('project.edit.namePlaceholder')}
           </Text>
+          {selectedType === 'shopping' && (
+            <Text variant="caption" className="text-muted-foreground mt-1">Shopping List</Text>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>

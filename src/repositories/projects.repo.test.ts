@@ -81,4 +81,51 @@ describe('projects.repo', () => {
     const result = await projectsRepo.getById(db, 'nope');
     expect(result).toBeNull();
   });
+
+  it('create: suporta type="shopping"', async () => {
+    ({ db, close } = createTestDB());
+    const project = await projectsRepo.create(db, {
+      name: 'Lista de Compras',
+      color: '#4CAF50',
+      icon: 'cart-outline',
+      type: 'shopping',
+    });
+    expect(project.id).toBeTruthy();
+    expect(project.name).toBe('Lista de Compras');
+    expect(project.type).toBe('shopping');
+  });
+
+  it('create: type default é "default" quando omitido', async () => {
+    ({ db, close } = createTestDB());
+    const project = await projectsRepo.create(db, {
+      name: 'Trabalho',
+      color: '#0079bf',
+      icon: 'briefcase',
+    });
+    expect(project.type).toBe('default');
+  });
+
+  it('update: pode alterar type de default para shopping', async () => {
+    ({ db, close } = createTestDB());
+    const project = await projectsRepo.create(db, {
+      name: 'X',
+      color: '#000',
+      icon: 'i',
+      type: 'default',
+    });
+    const updated = await projectsRepo.update(db, project.id, { type: 'shopping' });
+    expect(updated?.type).toBe('shopping');
+  });
+
+  it('update: pode alterar type de shopping para default', async () => {
+    ({ db, close } = createTestDB());
+    const project = await projectsRepo.create(db, {
+      name: 'X',
+      color: '#000',
+      icon: 'i',
+      type: 'shopping',
+    });
+    const updated = await projectsRepo.update(db, project.id, { type: 'default' });
+    expect(updated?.type).toBe('default');
+  });
 });

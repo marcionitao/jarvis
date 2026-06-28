@@ -321,3 +321,55 @@ export async function listByLabel(
     .where(and(...conditions))
     .orderBy(asc(tasks.dueDate), asc(tasks.order));
 }
+
+export interface ShoppingSection {
+  label: LabelDTO | null;
+  tasks: TaskDTO[];
+}
+
+export async function listByProjectGroupedBySection(
+  db: JarvisDB,
+  projectId: string
+): Promise<ShoppingSection[]> {
+  const projectTasks = await db
+    .select()
+    .from(tasks)
+    .where(eq(tasks.projectId, projectId))
+    .orderBy(asc(tasks.order));
+
+  const sectionsMap = new Map<string, { label: LabelDTO | null; tasks: TaskDTO[] }>();
+
+  for (const task of projectTasks) {
+    const taskLabelRows = await db
+      .select({ id: labels.id, name: labels.name, color: labels.color, createdAt: labels.createdAt })
+      .from(taskLabels)
+      .innerJoin(labels, eq(taskLabels.labelId, labels.id))
+      .where(eq(taskLabels.taskId, task.id));
+
+    const sectionKey = taskLabelRows.length > 0 ? taskLabelRows[0].name : '__no_label__';
+    const label = taskLabelRows.length > 0 ? taskLabelRows[0] : null;
+
+    if (!sectionsMap.has(sectionKey)) {
+      sectionsMap.set(sectionKey, { label, tasks: [] });
+    }
+
+    sectionsMap.get(sectionKey)!.tasks.push(task);
+  }
+
+  for (const section of sectionsMap.values()) {
+    section.tasks.sort((a, b) => {
+      if (a.status === 'todo' && b.status !== 'todo') return -1;
+      if (a.status !== 'todo' && b.status === 'todo') return 1;
+      return a.order - b.order;
+    });
+  }
+
+  const result = Array.from(sectionsMap.values());
+  result.sort((a, b) => {
+    if (a.label === null) return 1;
+    if (b.label === null) return -1;
+    return a.label.name.localeCompare(b.label.name);
+  });
+
+  return result;
+}

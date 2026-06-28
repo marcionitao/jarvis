@@ -35,7 +35,11 @@ export function useUpdateTask() {
 
 export function useDeleteTask() {
   return useMutation<[string], boolean>('tasks:changed', async (db, id) => {
-    await cancelTaskReminder(id);
+    try {
+      await cancelTaskReminder(id);
+    } catch {
+      // Ignore reminder cancel errors (notification may already be gone)
+    }
     return tasksRepo.hardDelete(db, id);
   });
 }

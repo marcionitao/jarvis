@@ -54,7 +54,7 @@ export function useQuery<T>(
   const eventsKey = events.join(',');
   useEffect(() => {
     if (!ready) return;
-    const unsubs = events.map((evt) => eventBus.on(evt, refresh));
+    const unsubs = events.map((evt) => eventBus.on(evt, () => void refresh()));
     return () => {
       unsubs.forEach((u) => u());
     };

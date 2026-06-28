@@ -31,6 +31,7 @@ export interface CreateProjectInput {
   name: string;
   color: string;
   icon: string;
+  type?: 'default' | 'shopping';
   parentId?: string | null;
   order?: number;
 }
@@ -43,6 +44,7 @@ export async function create(db: JarvisDB, input: CreateProjectInput): Promise<P
     name: input.name,
     color: input.color,
     icon: input.icon,
+    type: input.type ?? 'default',
     parentId: input.parentId ?? null,
     order: input.order ?? now,
     archivedAt: null,
@@ -62,6 +64,7 @@ export interface UpdateProjectInput {
   name?: string;
   color?: string;
   icon?: string;
+  type?: 'default' | 'shopping';
   parentId?: string | null;
   order?: number;
 }

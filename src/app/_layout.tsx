@@ -17,6 +17,8 @@ import { I18nProvider } from '@/state/i18n.context';
 import { NotificationsProvider } from '@/state/notifications.context';
 import { ThemeProvider, useTheme } from '@/state/theme.store';
 import { UIPrefsProvider } from '@/state/ui-prefs.context';
+import { SnackbarProvider } from '@/state/snackbar.context';
+import { Snackbar } from '@/components/ui/snackbar';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -64,7 +66,10 @@ export default function RootLayout() {
           <I18nProvider>
             <NotificationsProvider>
               <UIPrefsProvider>
-                <ThemedStack />
+                <SnackbarProvider>
+                  <ThemedStack />
+                  <Snackbar />
+                </SnackbarProvider>
               </UIPrefsProvider>
             </NotificationsProvider>
           </I18nProvider>

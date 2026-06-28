@@ -12,7 +12,7 @@ import * as labelsRepo from '@/repositories/labels.repo';
 import * as tasksRepo from '@/repositories/tasks.repo';
 import { INBOX_PROJECT_ID } from '@/db/seed';
 import { projectColors } from '@/styles/theme';
-import { parseQuickAdd } from '@/services/quick-capture.service';
+import { parseQuickAdd, parseQuickAddShopping } from '@/services/quick-capture.service';
 import { quickAddParsedSchema } from '@/schemas/task.schema';
 import { useMutation } from './use-mutation';
 import type { JarvisDB } from '@/db/client';
@@ -50,32 +50,49 @@ export function useQuickAdd() {
       const parsedRaw = parseQuickAdd(raw);
       const parsed = quickAddParsedSchema.parse(parsedRaw);
 
-      // projectIdOverride vem da URL (?project=ID) quando o Quick Add é
-      // aberto a partir do detail de um projecto. Tem prioridade sobre
-      // o #nome extraído do texto, que por sua vez tem prioridade sobre
-      // o Inbox.
       let projectId: string;
+      let isShopping = false;
+
       if (projectIdOverride) {
         projectId = projectIdOverride;
+        const proj = await projectsRepo.getById(db, projectIdOverride);
+        isShopping = proj?.type === 'shopping';
       } else if (parsed.projectName) {
         projectId = await findOrCreateProject(db, parsed.projectName);
       } else {
         projectId = INBOX_PROJECT_ID;
       }
 
-      // O picker de data tem prioridade sobre a data extraída do texto.
-      const dueDate = pickerDueDate ?? parsed.dueDate;
+      let title: string;
+      let description: string | null = null;
+      let labelName: string | null = null;
+      let dueDate: number | null | undefined = undefined;
+
+      if (isShopping) {
+        const shopping = parseQuickAddShopping(raw);
+        title = shopping.title;
+        description = shopping.quantity;
+        labelName = shopping.section;
+        dueDate = shopping.dueDate;
+      } else {
+        title = parsed.title;
+        dueDate = parsed.dueDate ?? pickerDueDate;
+        labelName = parsed.labelName ?? null;
+      }
+
+      const finalDueDate = pickerDueDate ?? dueDate;
 
       const task = await tasksRepo.create(db, {
-        title: parsed.title,
-        priority: parsed.priority,
+        title,
+        description: description ?? undefined,
+        priority: 0,
         projectId,
-        dueDate,
-        dueTime: parsed.dueTime,
+        dueDate: finalDueDate ?? null,
+        dueTime: null,
       });
 
-      if (parsed.labelName) {
-        const labelId = await findOrCreateLabel(db, parsed.labelName);
+      if (labelName) {
+        const labelId = await findOrCreateLabel(db, labelName);
         await labelsRepo.attachToTask(db, task.id, labelId);
       }
 

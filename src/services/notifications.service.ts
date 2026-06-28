@@ -76,7 +76,9 @@ export async function scheduleTaskReminder(task: TaskDTO): Promise<void> {
 
 export async function cancelTaskReminder(taskId: string): Promise<void> {
   const db = getDB();
-  if (!db) return;
+  if (!db || typeof db.select !== 'function') {
+    return;
+  }
 
   const reminders = await remindersRepo.listForTask(db, taskId);
   for (const reminder of reminders) {

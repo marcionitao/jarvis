@@ -755,7 +755,7 @@ Implementar a tela de Definições acessível do header de "Hoje" com:
 
 ---
 
-## 25. Implementações Completas
+## 25. Implementações Completas (atualizado)
 
 | Etapa | Descrição | Estado |
 |-------|-----------|--------|
@@ -764,6 +764,120 @@ Implementar a tela de Definições acessível do header de "Hoje" com:
 | 2.1 | Etiquetas (CRUD + pesquisa) | ✅ Concluída |
 | 2.2 | Definições (tema + idioma) | ✅ Concluída |
 | 2.4 | Notificações (toggle + scheduling) | ✅ Concluída |
+| 2.5 | Shopping List (checklist) + 4 bugfixes | ✅ Concluída |
+
+## 26.1 — Bug Fix: Delete não funcionava na Shopping List (CONCLUÍDO ✅)
+
+### Diagnóstico
+Utilizador reportou que não conseguia deletar items da Shopping List. O modal abria e confirmava, mas o item ficava na lista.
+
+**Causa raíz:** `cancelTaskReminder(id)` em `useDeleteTask` tentava usar `getDB()` que retornava `undefined` (ou algo sem método `select`). Isso lançava `TypeError: db.select is not a function` que:
+1. Impedia o `hardDelete` de executar
+2. Impedia o `eventBus.emit('tasks:changed')` de ser chamado
+3. Resultado: item nunca era apagado e UI não atualizava
+
+**Logs de debug:**
+```
+[DEBUG] handleConfirmDelete: calling mutate with id 01KW6NZ8CM6BD0WT3WMH754T97
+[DEBUG] useMutation: error [TypeError: db.select is not a function (it is undefined)]
+[DEBUG] handleConfirmDelete: mutate returned
+```
+
+### Soluções aplicadas
+1. **`use-task-mutations.ts`:** `cancelTaskReminder` agora dentro de `try/catch` — se falhar, `hardDelete` ainda assim executa
+2. **`notifications.service.ts`:** `cancelTaskReminder` agora verifica `typeof db.select !== 'function'` para detetar DB inválido
+3. **`use-shopping-list.ts`:** Query key agora usa `shopping-list:${projectId}` para garantir invalidation correta
+4. **`quick-capture.service.ts`:** `QUANTITY_REGEX` tinha `^` (início de string) que impedia match de quantidades em `leite 2L` — `^` removido
+
+### Ficheiros modificados
+| Ficheiro | Alteração |
+|----------|-----------|
+| `src/hooks/use-task-mutations.ts` | `cancelTaskReminder` envolta em try/catch |
+| `src/services/notifications.service.ts` | Verificação `typeof db.select !== 'function'` |
+| `src/hooks/use-shopping-list.ts` | Query key `shopping-list:${projectId}` |
+| `src/services/quick-capture.service.ts` | Removido `^` do `QUANTITY_REGEX` |
+| `src/app/quick-add.tsx` | Label picker escondido quando `isShoppingProject` |
+
+### Validação
+- `npm test`: **129/129 testes** ✅
+- `npm run lint`: **0 erros** (22 warnings pré-existentes)
+- Delete funciona: modal abre → confirma → item desaparece → snackbar "Undo" aparece
+
+---
+
+## 26.2 — Bug Fix: Labels apareciam no Quick Add de Shopping List (CONCLUÍDO ✅)
+
+### Diagnóstico
+Quick Add para Shopping List mostrava o Label picker (etiquetas), mas isso não faz sentido para lista de compras (items são agrupados por secção `#categoria`, não por etiquetas).
+
+### Solução
+Adicionado `{!isShoppingProject && (...)}` ao redor do bloco Label picker em `quick-add.tsx:280-335`. Agora Priority, Date E Label pickers são escondidos no modo shopping.
+
+---
+
+## 26.3 — Bug Fix: Ícone de Shopping List era "folder" em vez de "cart" (CONCLUÍDO ✅)
+
+### Diagnóstico
+Ao criar uma Shopping List, o ícone aparecia como pasta (`folder-outline`) em vez de carrinho de compras (`cart-outline`), apesar do preview mostrar o ícone correto.
+
+### Causa
+`handleSave` em `new.tsx` e `edit/[id].tsx` usava `selectedIcon` (que defaultava a `folder-outline`) em vez de auto-selecionar `cart-outline` quando `type === 'shopping'`.
+
+### Solução
+```ts
+const icon = selectedType === 'shopping' ? 'cart-outline' : selectedIcon;
+await createProject.mutate({ name, color, icon, type: selectedType });
+```
+
+### Ficheiros modificados
+| Ficheiro | Alteração |
+|----------|-----------|
+| `src/app/project/new.tsx` | `handleSave` usa `cart-outline` quando type=shopping |
+| `src/app/project/edit/[id].tsx` | `handleSave` usa `cart-outline` quando type=shopping |
+
+---
+
+## 26.4 — Bug Fix: Snackbar com Undo nunca desaparecia automaticamente (CONCLUÍDO ✅)
+
+### Diagnóstico
+Snackbar com action "Undo" ficava永久 visível até ser fechado manualmente.
+
+### Causa
+`useEffect` em `snackbar.tsx` só aplicava timeout quando `!action`:
+```ts
+if (visible && !action) { const timer = setTimeout(hide, 3500); }
+```
+Com action presente (Undo), nunca desaparecia.
+
+### Soluções
+1. Timeout agora aplica-se também quando há action: `action ? 5000 : 3500`
+2. Typo corrigido: `clearTimeout(tide)` → `clearTimeout(timer)`
+
+### Ficheiros modificados
+| Ficheiro | Alteração |
+|----------|-----------|
+| `src/components/ui/snackbar.tsx` | Timeout de 5s com action, typo corrigido |
+
+---
+
+## 26.5 — Shopping List (2.5) — fully operational ✅
+
+A Shopping List está agora 100% funcional com todos os bugs resolvidos:
+
+| Funcionalidade | Estado |
+|----------------|--------|
+| Schema + Repo (Project.type) | ✅ |
+| Quick Add Parser (`leite 2L #laticínios`) | ✅ |
+| ShoppingListScreen com grouping por secção | ✅ |
+| Delete com undo snackbar | ✅ ✅ (bugfix aplicado) |
+| Clear done items | ✅ |
+| Empty states | ✅ |
+| Integração Projects (type selector) | ✅ |
+| Ícone auto-selecionado (cart) | ✅ ✅ (bugfix aplicado) |
+| Pickers escondidos no modo shopping | ✅ ✅ (bugfix aplicado) |
+| Snackbar auto-dismiss com Undo | ✅ ✅ (bugfix aplicado) |
+
+---
 
 ## 26. Próximos Passos
 
@@ -772,13 +886,18 @@ Implementar a tela de Definições acessível do header de "Hoje" com:
 - Estrutura de `SyncProvider` com estado `syncEnabled: boolean`
 - Botão "Configurar sync" (place holder — a implementação real fica para fase futura)
 
-### Bugs / Tech Debt (prioridade)
-| Bug | Local | Prioridade |
-|-----|-------|------------|
-| `useTasksForDate` / `useTasksForMonth` — dependency array complexo | `use-tasks-for-date.ts:13`, `use-tasks-for-month.ts:18` | 🟡 Média ✅ (correção concluída) |
-| `SearchFilters.tsx` — `key as any` no `setFilter` | `SearchFilters.tsx:77` | 🟢 Baixa ✅ (correção concluída) |
-| `quick-add.tsx` — `mutateAsync` property error | `quick-add.tsx:142` | 🟡 Média ✅ (correção concluída) |
-| **Splash full-screen Android** — `expo-splash-screen` não suporta full-screen nativo; Config Plugin falhou (SplashTheme não criado no styles.xml); imagem `splash-jarvis.png` 1284x2778 não preenche ecrã | `app.json`, `plugins/splash-fullscreen.plugin.js`, `android/` nativo | 🟡 Média ❌ **PENDENTE** |
+### Tech Debt / Bugs Prioritários (atualizado)
+| Bug | Local | Prioridade | Estado |
+|-----|-------|------------|--------|
+| `useTasksForDate` dependency array complexo | `use-tasks-for-date.ts:13` | 🟡 Média | ✅ Resolvido |
+| `SearchFilters.tsx` — `key as any` | `SearchFilters.tsx:77` | 🟢 Baixa | ✅ Resolvido |
+| `quick-add.tsx` — `mutateAsync` property error | `quick-add.tsx:142` | 🟡 Média | ✅ Resolvido |
+| Delete não funcionava na Shopping List | `use-task-mutations.ts:36` | 🔴 Alta | ✅ Resolvido (26.1) |
+| Labels apareciam no Quick Add shopping | `quick-add.tsx:280` | 🟡 Média | ✅ Resolvido (26.2) |
+| Ícone shopping era folder em vez de cart | `new.tsx:64`, `edit/[id].tsx:75` | 🟡 Média | ✅ Resolvido (26.3) |
+| Snackbar com Undo nunca desaparecia | `snackbar.tsx:17` | 🟡 Média | ✅ Resolvido (26.4) |
+| **Splash full-screen Android** | `app.json`, `android/` | 🟡 Média | ❌ Pendente |
+| `QUANTITY_REGEX` não matchava no meio da string | `quick-capture.service.ts:72` | 🟡 Média | ✅ Resolvido (26.1) |
 
 ---
 
@@ -825,19 +944,60 @@ Implementar a tela de Definições acessível do header de "Hoje" com:
 
 **Implementação (3.5 dias — 5 fases):**
 
-| Fase | Entregável | Esforço |
-|------|------------|---------|
-| 1. Schema + Repo | `Project.type` enum ("default" | "shopping") + migration | 1 dia |
-| 2. Quick Add Parser | Parsing especial: `leite 2L #laticínios` → qty + label | 0.5 dias |
-| 3. ShoppingListScreen | Nova screen (reutiliza ProjectDetail) + agrupamento por Label | 1.5 dias |
-| 4. Integração Home | Acesso rápido à lista ativa + empty states | 0.5 dias |
-| 5. Polish | Limpar marcados, histórico, empty states, bulk actions | 0.5 dias |
-| **Total** | | **~3.5 dias** |
+| Fase | Entregável | Esforço | Estado |
+|------|------------|---------|--------|
+| 1. Schema + Repo | `Project.type` enum ("default" | "shopping") + migration | 1 dia | ✅ Concluída |
+| 2. Quick Add Parser | Parsing especial: `leite 2L #laticínios` → qty + label | 0.5 dias | ✅ Concluída |
+| 3. ShoppingListScreen | Nova screen (reutiliza ProjectDetail) + agrupamento por Label | 1.5 dias | ✅ **Concluída — testável no emulador!** |
+| 4. Integração Home | Acesso rápido à lista ativa + empty states | 0.5 dias | ✅ **Concluída — testável no emulador!** |
+| 5. Polish | Limpar marcados, histórico, empty states, bulk actions | 0.5 dias | ✅ Concluída |
+| **Total** | | **~3.5 dias** | |
 
 **Schema Changes (Mínimos):**
-- `Project.type` enum: "default" | "shopping" (default: "default")
+- `Project.type` enum: "default" | "shopping" (default: "default") — ✅ Adicionado
 - Parser Quick Add detecta projectId = shopping list → parser especial
 - Labels = secções (Laticínios, Frutas, Mercearia, Mercearia, Bebidas, Limpeza, Outros)
+
+**Ficheiros alterados em Fase 1:**
+- `src/db/schema.ts` — coluna `type` adicionada à tabela `projects`
+- `src/db/migrations/0002_brown_sir_ram.sql` — generated migration (ADD COLUMN)
+- `src/db/migrations/migrations.ts` — m0002 export added
+- `src/db/migrations/meta/_journal.json` — updated by drizzle-kit
+- `src/db/schema.test.ts` — 4 tests para coluna `type`
+- `src/db/schema.test.ts` — 4 tests passing (107 total)
+
+**Ficheiros alterados em Fase 2:**
+- `src/services/quick-capture.service.ts` — `ShoppingParsed` interface + `parseQuickAddShopping()` export
+- `src/services/quick-capture.service.test.ts` — 13 new tests para shopping parser (31 existing + 13 new = 44 total, 125 all passing)
+
+**Shopping parsed output (`ShoppingParsed`):**
+- `title` → nome do item (ex: "leite")
+- `quantity` → quantidade (ex: "2L", "500g", "12") ou null
+- `section` → secção com `#` (ex: "laticínios") ou null
+- `dueDate` → hoje (default)
+
+**Ficheiros criados em Fase 3:**
+- `src/app/shopping-list/[id].tsx` — screen Shopping List com grouping por secção, delete, clear-done
+- `src/hooks/use-shopping-list.ts` — hook `useShoppingList(projectId)` → `ShoppingSection[]`
+- `src/repositories/tasks.repo.ts` — `listByProjectGroupedBySection()` + `ShoppingSection` interface
+- `src/repositories/tasks.repo.test.ts` — 5 new tests para grouping (24 total, 125 all passing)
+- `src/hooks/use-quick-add.ts` — shopping mode detection: se `project.type === 'shopping'`, usa `parseQuickAddShopping`
+- `src/app/(tabs)/projects.tsx` — routing: `item.type === 'shopping'` → `/shopping-list/${id}`
+- `src/i18n/pt.json` + `en.json` — 7 novas chaves: `shopping.title`, `shopping.clearDone`, `shopping.itemCount`, `shopping.empty.*`, `shopping.section.withoutSection`, `shopping.delete.confirm`
+
+**Ficheiros alterados em Fase 4:**
+- `src/repositories/projects.repo.ts` — `CreateProjectInput.type` + `UpdateProjectInput.type` + implementação
+- `src/repositories/projects.repo.test.ts` — 4 new tests para `type` (10 total, 129 all passing)
+- `src/app/project/new.tsx` — type selector UI (2 botões: Projeto / Lista de Compras)
+- `src/app/project/edit/[id].tsx` — type selector UI + preenche tipo existente
+- `src/i18n/pt.json` + `en.json` — 8 novas chaves: `project.new.typeLabel`, `project.new.typeDefault`, `project.new.typeShopping`, `project.edit.typeLabel`, `project.edit.typeDefault`, `project.edit.typeShopping`
+
+**Ficheiros criados em Fase 5 (Polish):**
+- `src/state/snackbar.context.tsx` — SnackbarProvider + useSnackbar() global state
+- `src/components/ui/snackbar.tsx` — Snackbar UI component (bottom toast with action)
+- `src/app/_layout.tsx` — SnackbarProvider wrapping + Snackbar rendered
+- `src/app/shopping-list/[id].tsx` — undo delete via snackbar ("{title} eliminado · Undo")
+- `src/i18n/pt.json` + `en.json` — `shopping.itemDeleted`
 
 **UI/UX:**
 - Acesso via tab "Projetos" → lista shopping ativa ou cria nova
@@ -870,6 +1030,31 @@ Input: "leite 2L #laticínios"
 
 ## Próxima Ação Recomendada
 
-**Sugestão:** Avançar para **Recurring Tasks** (funcionalidade core) e deixar o Splash full-screen para resolver depois com edição nativa directa (pós-prebuild, sem Config Plugin).
+**Sugestão:** Avançar para **Recurring Tasks** (funcionalidade core de alta prioridade).
 
-Ou: Resolve o Splash com edição nativa directa (edita `android/app/src/main/res/values/styles.xml` + `launch_screen.xml` após `prebuild`).
+Alternativas:
+- **Recurring Tasks** 🔴 Alta — tarefas que se repetem (diário, semanal, mensal)
+- **Subtasks/Checklists** 🔴 Alta — sub-tarefas dentro de uma tarefa
+- Resolve o Splash full-screen Android com edição nativa directa (pós-prebuild, sem Config Plugin)
+
+---
+
+## 2.6 — Recurring Tasks (Pendente)
+
+### Visão Geral
+Tarefas recorrentes que se auto-criam baseadas numa regra de recorrência.
+
+### Modelo de dados
+- `Task.recurrenceRule` (string nullable) — e.g. `"daily"`, `"weekly"`, `"monthly"`, `"every-2-days"`
+- Quando uma tarefa recurrente é marcada como done, o sistema cria a próxima ocorrência
+
+### Schema changes
+- `tasks.recurrenceRule` já existe no schema (string nullable) ✅
+
+### Implementação proposta
+| Fase | Descrição |
+|------|-----------|
+| 1 | Parser para语法 de recorrência no Quick Add: `!recurring(daily)`, `!recurring(weekly)` |
+| 2 | `useMutation` que, ao completar uma task recurrente, cria a próxima ocorrência |
+| 3 | UI: indicar tasks recorrentes com ícone `repeat-outline` no TaskRow |
+| 4 | Ecrã de editar recorrência (opcional — por agora só Quick Add) |

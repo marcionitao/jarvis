@@ -24,6 +24,13 @@ export interface QuickAddParsed {
   dueTime: number | null;
 }
 
+export interface ShoppingParsed {
+  title: string;
+  quantity: string | null;
+  section: string | null;
+  dueDate: number | null;
+}
+
 const PRIORITY_REGEX = /!p([1-4])\b/giu;
 const PROJECT_REGEX = /#([\p{L}\p{N}_-]+)/giu;
 const LABEL_REGEX = /@([\p{L}\p{N}_-]+)/giu;
@@ -60,6 +67,9 @@ const WEEKDAY_EN_RE = new RegExp(`(?:^|\\W)(next\\s+)?(${WEEKDAY_EN.join('|')})(
 const TIME_BARE = /(?:^|[\s\W])(?:[aà]s\s+|at\s+)(\d{1,2})(?::(\d{2}))?(?=[\s\W]|$)/iu;
 const TIME_COLON = /(?:^|[\s\W])(?:[aà]s?\s+|at\s+)?(\d{1,2}):(\d{2})(?=[\s\W]|$)/iu;
 const TIME_H = /(?:^|[\s\W])(?:[aà]s?\s+|at\s+)?(\d{1,2})h(s)?(?=[\s\W]|$)/iu;
+
+const SECTION_REGEX = /#([\p{L}\p{N}_-]+)/giu;
+const QUANTITY_REGEX = /([\s\S]*?)(\d[\d,.\s]*[a-zA-Zµℓ]+|[a-zA-Zµℓ]+[\d,.\d]*|\d+)(?:\s*$)/u;
 
 function toDateKey(date: Date): number {
   return date.getFullYear() * 10000 + (date.getMonth() + 1) * 100 + date.getDate();
@@ -329,4 +339,45 @@ export function parseQuickAdd(input: string, now: Date = new Date()): QuickAddPa
   working = working.replace(/\b(em|in)\b/gi, '').replace(/\s+/g, ' ').trim();
 
   return { title: working, priority, projectName, labelName, dueDate, dueTime };
+}
+
+export function parseQuickAddShopping(input: string, now: Date = new Date()): ShoppingParsed {
+  let working = input.trim();
+  let section: string | null = null;
+  let quantity: string | null = null;
+
+  const sectionMatches = [...working.matchAll(SECTION_REGEX)];
+  if (sectionMatches.length > 0) {
+    section = sectionMatches[0][1];
+    working = working.replace(SECTION_REGEX, '').replace(/\s+/g, ' ').trim();
+    if (!working) {
+      section = null;
+    }
+  }
+
+  const qMatch = working.match(QUANTITY_REGEX);
+  if (qMatch) {
+    const candidateQty = (qMatch[2] ?? qMatch[1] ?? '').trim();
+    if (candidateQty && /\d/.test(candidateQty)) {
+      quantity = candidateQty;
+      working = (qMatch[1] ?? working).trim();
+    }
+  }
+
+  if (quantity === null) {
+    const words = working.split(/\s+/);
+    const lastWord = words[words.length - 1] ?? '';
+    if (lastWord && /\d/.test(lastWord)) {
+      quantity = lastWord;
+      words.pop();
+      working = words.join(' ') || working;
+    }
+  }
+
+  return {
+    title: working || '',
+    quantity,
+    section,
+    dueDate: toDateKey(now),
+  };
 }

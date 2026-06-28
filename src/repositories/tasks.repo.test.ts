@@ -294,4 +294,92 @@ describe('tasks.repo', () => {
       expect(result[0].title).toBe('Urgente casa');
     });
   });
+
+  describe('listByProjectGroupedBySection (Shopping List)', () => {
+    it('returns tasks grouped by label for a given project', async () => {
+      ({ db, close } = createTestDB());
+      const { create: createLabel, attachToTask } = await import('./labels.repo');
+      const projectId = 'shopping-1';
+
+      const t1 = await tasksRepo.create(db, { title: 'Leite', projectId });
+      const t2 = await tasksRepo.create(db, { title: 'Pão', projectId });
+      const t3 = await tasksRepo.create(db, { title: 'Manteiga', projectId });
+
+      const laticinios = await createLabel(db, { name: 'Laticínios', color: '#fff' });
+      const padaria = await createLabel(db, { name: 'Padaria', color: '#eee' });
+
+      await attachToTask(db, t1.id, laticinios.id);
+      await attachToTask(db, t2.id, padaria.id);
+      await attachToTask(db, t3.id, laticinios.id);
+
+      const result = await tasksRepo.listByProjectGroupedBySection(db, projectId);
+
+      expect(result).toHaveLength(2);
+      const sectionNames = result.map((s) => s.label?.name).sort();
+      expect(sectionNames).toEqual(['Laticínios', 'Padaria']);
+
+      const laticiniosSection = result.find((s) => s.label?.name === 'Laticínios');
+      expect(laticiniosSection?.tasks.map((t) => t.title).sort()).toEqual(['Leite', 'Manteiga']);
+
+      const padariaSection = result.find((s) => s.label?.name === 'Padaria');
+      expect(padariaSection?.tasks.map((t) => t.title)).toEqual(['Pão']);
+    });
+
+    it('returns tasks without label as "undefined" section', async () => {
+      ({ db, close } = createTestDB());
+      const projectId = 'shopping-2';
+
+      const t1 = await tasksRepo.create(db, { title: 'Sem secção', projectId });
+      const t2 = await tasksRepo.create(db, { title: 'Também sem', projectId });
+
+      const result = await tasksRepo.listByProjectGroupedBySection(db, projectId);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].label).toBeNull();
+      expect(result[0].tasks.map((t) => t.title)).toEqual(['Sem secção', 'Também sem']);
+    });
+
+    it('sorts todo tasks before done within each section', async () => {
+      ({ db, close } = createTestDB());
+      const { create: createLabel, attachToTask } = await import('./labels.repo');
+      const projectId = 'shopping-3';
+
+      const t1 = await tasksRepo.create(db, { title: 'Feito', projectId });
+      const t2 = await tasksRepo.create(db, { title: 'Pendente', projectId });
+      await tasksRepo.toggleComplete(db, t1.id, true);
+      const section = await createLabel(db, { name: 'Teste', color: '#000' });
+      await attachToTask(db, t1.id, section.id);
+      await attachToTask(db, t2.id, section.id);
+
+      const result = await tasksRepo.listByProjectGroupedBySection(db, projectId);
+
+      const [sec] = result;
+      expect(sec.tasks[0].title).toBe('Pendente');
+      expect(sec.tasks[1].title).toBe('Feito');
+    });
+
+    it('excludes tasks from other projects', async () => {
+      ({ db, close } = createTestDB());
+      const { create: createLabel, attachToTask } = await import('./labels.repo');
+      const projectId = 'shopping-4';
+
+      const t1 = await tasksRepo.create(db, { title: 'Minha', projectId });
+      const t2 = await tasksRepo.create(db, { title: 'Outra', projectId: 'other' });
+
+      const label = await createLabel(db, { name: 'Sec', color: '#000' });
+      await attachToTask(db, t1.id, label.id);
+      await attachToTask(db, t2.id, label.id);
+
+      const result = await tasksRepo.listByProjectGroupedBySection(db, projectId);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].tasks.map((t) => t.title)).toEqual(['Minha']);
+    });
+
+    it('returns empty array when project has no tasks', async () => {
+      ({ db, close } = createTestDB());
+      const result = await tasksRepo.listByProjectGroupedBySection(db, 'empty-project');
+      expect(result).toHaveLength(0);
+    });
+  });
 });

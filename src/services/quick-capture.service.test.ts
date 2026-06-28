@@ -2,7 +2,7 @@
 // Testes do parser do Quick Add.
 
 import { describe, it, expect } from 'vitest';
-import { parseQuickAdd } from './quick-capture.service';
+import { parseQuickAdd, parseQuickAddShopping } from './quick-capture.service';
 
 const fixedNow = new Date(2026, 5, 7, 14, 30); // 2026-06-07 14:30 local
 
@@ -89,7 +89,6 @@ describe('parseQuickAdd', () => {
     });
 
     it('"em março" (pt) — mês já passou este ano → próximo ano', () => {
-      // fixedNow é 2026-06-07. Março já passou → 2027-03-01.
       const r = parseQuickAdd('Aniversário em março', fixedNow);
       expect(r.dueDate).toBe(20270301);
     });
@@ -122,8 +121,7 @@ describe('parseQuickAdd', () => {
 
     it('"em 1 mês" → hoje + 1 mês', () => {
       const r = parseQuickAdd('Dentista em 1 mês', fixedNow);
-      const expected = new Date(2026, 6, 7);
-      expect(r.dueDate).toBe(key(expected));
+      expect(r.dueDate).toBe(20260707);
     });
 
     it('"em uma semana" (pt, palavra) → hoje + 7', () => {
@@ -147,7 +145,6 @@ describe('parseQuickAdd', () => {
 
   describe('dias da semana', () => {
     it('"próxima sexta" (pt) → próxima sexta', () => {
-      // 2026-06-07 é domingo. Próxima sexta = 2026-06-12.
       const r = parseQuickAdd('Reunião próxima sexta', fixedNow);
       expect(r.title).toBe('Reunião');
       const expected = new Date(2026, 5, 12);
@@ -155,7 +152,6 @@ describe('parseQuickAdd', () => {
     });
 
     it('"sexta" sem "próxima" salta para a próxima (≥1 dia)', () => {
-      // 2026-06-07 é domingo. "sexta" sem prefixo → 2026-06-12 (≥ 1 dia).
       const r = parseQuickAdd('Reunião sexta', fixedNow);
       expect(r.dueDate).toBe(key(new Date(2026, 5, 12)));
     });
@@ -197,7 +193,6 @@ describe('parseQuickAdd', () => {
   describe('caso combinado: "Levar o carro a oficina no dia 10 de junho as 10hs"', () => {
     it('extrai título, data e hora', () => {
       const r = parseQuickAdd('Levar o carro a oficina no dia 10 de junho as 10hs', fixedNow);
-      // O título pode conter artefactos residuais; aceitamos ambos:
       expect(r.dueDate).toBe(20260610);
       expect(r.dueTime).toBe(10 * 60);
     });
@@ -211,6 +206,97 @@ describe('parseQuickAdd', () => {
       expect(r.projectName).toBe('trabalho');
       expect(r.labelName).toBe('importante');
       expect(r.dueDate).toBe(key(new Date(2026, 5, 8)));
+    });
+  });
+});
+
+describe('parseQuickAddShopping', () => {
+  describe('basic item parsing', () => {
+    it('plain item: "leite" → title: "leite"', () => {
+      const r = parseQuickAddShopping('leite', fixedNow);
+      expect(r.title).toBe('leite');
+      expect(r.quantity).toBeNull();
+      expect(r.section).toBeNull();
+    });
+
+    it('item with quantity: "leite 2L" → title: "leite", quantity: "2L"', () => {
+      const r = parseQuickAddShopping('leite 2L', fixedNow);
+      expect(r.title).toBe('leite');
+      expect(r.quantity).toBe('2L');
+      expect(r.section).toBeNull();
+    });
+
+    it('item with quantity and section: "leite 2L #laticínios" → correct fields', () => {
+      const r = parseQuickAddShopping('leite 2L #laticínios', fixedNow);
+      expect(r.title).toBe('leite');
+      expect(r.quantity).toBe('2L');
+      expect(r.section).toBe('laticínios');
+    });
+
+    it('item with only section: "leite #laticínios" → title: "leite", section: "laticínios"', () => {
+      const r = parseQuickAddShopping('leite #laticínios', fixedNow);
+      expect(r.title).toBe('leite');
+      expect(r.quantity).toBeNull();
+      expect(r.section).toBe('laticínios');
+    });
+  });
+
+  describe('quantity patterns', () => {
+    it('numeric quantity: "pão 500g" → quantity: "500g"', () => {
+      const r = parseQuickAddShopping('pão 500g', fixedNow);
+      expect(r.title).toBe('pão');
+      expect(r.quantity).toBe('500g');
+    });
+
+    it('multiple words quantity: "leite 1,5 L" → quantity: "1,5 L"', () => {
+      const r = parseQuickAddShopping('leite 1,5 L', fixedNow);
+      expect(r.title).toBe('leite');
+      expect(r.quantity).toBe('1,5 L');
+    });
+
+    it('quantity at end: "ovos 12" → quantity: "12"', () => {
+      const r = parseQuickAddShopping('ovos 12', fixedNow);
+      expect(r.title).toBe('ovos');
+      expect(r.quantity).toBe('12');
+    });
+
+    it('unit-only quantity not matched: "leite" → quantity: null', () => {
+      const r = parseQuickAddShopping('leite', fixedNow);
+      expect(r.quantity).toBeNull();
+    });
+  });
+
+  describe('section label with #', () => {
+    it('section after item: "leite #laticínios" → section: "laticínios"', () => {
+      const r = parseQuickAddShopping('leite #laticínios', fixedNow);
+      expect(r.section).toBe('laticínios');
+    });
+
+    it('section with special chars: "#café-da-manhã" → section: "café-da-manhã"', () => {
+      const r = parseQuickAddShopping('café #café-da-manhã', fixedNow);
+      expect(r.section).toBe('café-da-manhã');
+    });
+
+    it('section without item: invalid — title empty', () => {
+      const r = parseQuickAddShopping('#laticínios', fixedNow);
+      expect(r.title).toBe('');
+      expect(r.section).toBeNull();
+    });
+  });
+
+  describe('combined with regular quick add fields', () => {
+    it('item + quantity + section: "leite 2L #laticínios"', () => {
+      const r = parseQuickAddShopping('leite 2L #laticínios', fixedNow);
+      expect(r.title).toBe('leite');
+      expect(r.quantity).toBe('2L');
+      expect(r.section).toBe('laticínios');
+    });
+
+    it('item with spaces in name: "iogurte natural 500g #laticínios"', () => {
+      const r = parseQuickAddShopping('iogurte natural 500g #laticínios', fixedNow);
+      expect(r.title).toBe('iogurte natural');
+      expect(r.quantity).toBe('500g');
+      expect(r.section).toBe('laticínios');
     });
   });
 });
