@@ -37,7 +37,7 @@ export function useTasksSearch(initialFilters: Partial<SearchFilters> = {}) {
   // Query state
   const { data, isLoading, error, refetch } = useQuery<TaskDTO[]>(
     fetcher,
-    ['tasks:search'],
+    ['tasks:changed'],  // escuta mudanças em tasks (toggle, delete, create)
     filters
   );
 

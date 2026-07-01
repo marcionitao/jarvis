@@ -5,10 +5,16 @@
 import { and, asc, desc, eq, gte, inArray, isNull, lte, like, or, sql } from 'drizzle-orm';
 import { ulid } from 'ulid';
 import type { JarvisDB } from '@/db/client';
-import { tasks, taskLabels, labels, type Task, type NewTask } from '@/db/schema';
+import { tasks, taskLabels, labels, projects, type Task, type NewTask } from '@/db/schema';
 import { enqueueOutbox } from './outbox.repo';
 
 export type TaskDTO = Task;
+
+export interface TaskWithProject extends TaskDTO {
+  projectName: string | null;
+  projectColor: string | null;
+  projectIcon: string | null;
+}
 
 export function toDateKey(date: Date): number {
   return date.getFullYear() * 10000 + (date.getMonth() + 1) * 100 + date.getDate();
@@ -288,10 +294,15 @@ export async function searchWithFilters(
   }
 
   const where = conditions.length > 0 ? and(...conditions) : undefined;
+  // Excluir tarefas de listas de compras (project.type = 'shopping')
+  const shoppingExclude = sql`NOT EXISTS (
+    SELECT 1 FROM ${projects} WHERE ${projects.id} = ${tasks.projectId} AND ${projects.type} = 'shopping'
+  )`;
+  const finalWhere = where ? and(where, shoppingExclude) : shoppingExclude;
   return db
     .select()
     .from(tasks)
-    .where(where)
+    .where(finalWhere)
     .orderBy(desc(tasks.clientUpdatedAt))
     .limit(100);
 }

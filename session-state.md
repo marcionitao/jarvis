@@ -916,6 +916,37 @@ A Shopping List está agora 100% funcional com todos os bugs resolvidos:
 
 ---
 
+## 2.7 — Project Indicator in Tasks (Pendente)
+
+### Objetivo
+Mostrar indicador visual nas tarefas que pertencem a um projeto (não órfãs) em todas as listas (Hoje, Pesquisa, Agenda, Projetos, Etiquetas). Badge com cor/ícone do projeto ao lado do título.
+
+### Implementação (4 fases)
+
+| Fase | Entregável | Esforço | Estado |
+|------|------------|---------|--------|
+| 1. Repo | JOIN com `projects` em `searchWithFilters`, `listByProject`, `listToday`, `listUpcoming`, `listByLabel` → retornar `projectName, projectColor, projectIcon` | ~0.5 dia | ⏳ Pendente |
+| 2. Tipos + Hooks | Interface `TaskWithProject` + atualizar `useTodayTasks`, `useProjectTasks`, `useTasksSearch`, `useTasksForLabel`, etc. | ~0.25 dia | ⏳ Pendente |
+| 3. TaskRow | Prop `project?: { name, color, icon }` + badge visual (círculo colorido + tooltip com nome) | ~0.5 dia | ⏳ Pendente |
+| 4. Integração + Testes | Passar `project` do hook → `TaskRow` em Search, Hoje, Projetos, Agenda, Label Detail + i18n + testes | ~0.25 dia | ⏳ Pendente |
+
+**Total: ~1.5 dias**
+
+### Pontos críticos
+- **Performance:** JOIN único no repo (evita N+1 queries)
+- **Null safety:** `projectId` pode ser null (Inbox) → sem badge
+- **Reutilização:** `TaskRow` usado em 5+ telas — todas beneficiam
+- **Projetos arquivados:** Considerar se mostrar badge para projetos arquivados
+
+### Benefício UX
+```
+☐ Comprar leite              ● Trabalho  (cor do projeto)
+☐ Revisar PR                 ● Pessoal   
+☐ Tarefa órfã/Inbox          (sem badge)
+```
+
+---
+
 ## Próximos Passos — Funcionalidades a Implementar
 
 ### 2.3 — Sincronização Cloud (Placeholder)
