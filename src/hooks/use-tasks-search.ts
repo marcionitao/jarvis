@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import * as tasksRepo from '@/repositories/tasks.repo';
-import type { SearchFilters } from '@/repositories/tasks.repo';
+import type { SearchFilters, TaskWithProject } from '@/repositories/tasks.repo';
 import { useQuery } from './use-query';
 import { useDebounce } from './use-debounce';
 
@@ -18,15 +18,12 @@ export function useTasksSearch(initialFilters: Partial<SearchFilters> = {}) {
     status: initialFilters.status ?? 'all',
   });
 
-  // Debounce da query (300ms)
   const debouncedQuery = useDebounce(filters.query ?? '', 300);
 
-  // Atualizar query no estado quando o debounce muda
   useEffect(() => {
     setFilters((prev) => ({ ...prev, query: debouncedQuery || null }));
   }, [debouncedQuery]);
 
-  // Fetcher para useQuery
   const fetcher = useCallback(
     async (db: Parameters<typeof tasksRepo.searchWithFilters>[0]) => {
       return tasksRepo.searchWithFilters(db, filters);
@@ -34,10 +31,9 @@ export function useTasksSearch(initialFilters: Partial<SearchFilters> = {}) {
     [filters]
   );
 
-  // Query state
-  const { data, isLoading, error, refetch } = useQuery<TaskDTO[]>(
+  const { data, isLoading, error, refetch } = useQuery<TaskWithProject[]>(
     fetcher,
-    ['tasks:changed'],  // escuta mudanças em tasks (toggle, delete, create)
+    ['tasks:changed'],
     filters
   );
 
@@ -68,4 +64,4 @@ export function useTasksSearch(initialFilters: Partial<SearchFilters> = {}) {
   };
 }
 
-export type SearchFilters = SearchFilters;
+export type { SearchFilters } from '@/repositories/tasks.repo';

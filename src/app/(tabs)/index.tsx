@@ -14,7 +14,7 @@ import { Icon } from '@/components/ui/icon';
 import { useTheme } from '@/state/theme.store';
 import { useI18n } from '@/state/i18n.context';
 import { useUIPrefs } from '@/state/ui-prefs.context';
-import type { TaskDTO } from '@/repositories/tasks.repo';
+import type { TaskWithProject } from '@/repositories/tasks.repo';
 
 export default function TodayScreen() {
   const { colors } = useTheme();
@@ -22,7 +22,7 @@ export default function TodayScreen() {
   const { showCompleted, toggleShowCompleted } = useUIPrefs();
   const { data, loading, error, refresh } = useTodayTasks();
 
-  const tasks: TaskDTO[] = data ?? [];
+  const tasks: TaskWithProject[] = data ?? [];
   const isEmpty = !loading && tasks.length === 0;
 
   return (
@@ -88,7 +88,12 @@ export default function TodayScreen() {
           <FlatList
             data={tasks}
             keyExtractor={(item) => item.id}
-            renderItem={({ item }) => <TaskRow task={item} />}
+            renderItem={({ item }) => {
+              const project = item.projectName
+                ? { name: item.projectName, color: item.projectColor!, icon: item.projectIcon! }
+                : null;
+              return <TaskRow task={item} project={project} />;
+            }}
             contentContainerClassName="px-5 pb-32"
             ItemSeparatorComponent={() => <View className="h-px bg-border mx-1" />}
           />

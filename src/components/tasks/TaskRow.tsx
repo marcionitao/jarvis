@@ -1,7 +1,7 @@
 // src/components/tasks/TaskRow.tsx
-// Linha de tarefa: checkbox bouncy + título + chip de prioridade + badge de data + etiquetas.
+// Linha de tarefa: checkbox bouncy + badge projeto + título + chip de prioridade + badge de data + etiquetas.
 
-import { View, Pressable } from 'react-native';
+import { Alert, View, Pressable } from 'react-native';
 import BouncyCheckbox from 'react-native-bouncy-checkbox';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
@@ -26,11 +26,18 @@ function dateColorFor(dayKey: number): string {
   return dateColors.other;
 }
 
-export interface TaskRowProps {
-  task: TaskDTO;
+export interface TaskProjectInfo {
+  name: string;
+  color: string;
+  icon: string;
 }
 
-export function TaskRow({ task }: TaskRowProps) {
+export interface TaskRowProps {
+  task: TaskDTO;
+  project?: TaskProjectInfo | null;
+}
+
+export function TaskRow({ task, project }: TaskRowProps) {
   const { colors } = useTheme();
   const { locale, t } = useI18n();
   const toggle = useToggleComplete();
@@ -51,6 +58,12 @@ export function TaskRow({ task }: TaskRowProps) {
     void toggle.mutate(task.id, !isDone);
   };
 
+  const handleProjectPress = () => {
+    if (project) {
+      Alert.alert(project.name, '', [{ text: 'OK' }]);
+    }
+  };
+
   return (
     <View className={cn('flex-row items-center gap-3 py-3 px-2', isDone && 'opacity-60')}>
       <BouncyCheckbox
@@ -63,6 +76,16 @@ export function TaskRow({ task }: TaskRowProps) {
         iconStyle={{ borderColor: colors.border, borderWidth: 2 }}
         innerIconStyle={{ borderWidth: 0 }}
       />
+      {project && (
+        <Pressable onPress={handleProjectPress} className="active:opacity-70">
+          <View
+            className="w-5 h-5 rounded items-center justify-center"
+            style={{ backgroundColor: project.color }}
+          >
+            <Icon name={project.icon as never} size={12} color="#ffffff" />
+          </View>
+        </Pressable>
+      )}
       <View className="flex-1">
         <Pressable onPress={handleToggle}>
           <Text
@@ -72,8 +95,24 @@ export function TaskRow({ task }: TaskRowProps) {
           >
             {task.title}
           </Text>
-          {(hasPriority || dateLabel || (isDone && task.completedAt) || (labels && labels.length > 0)) && (
+          {(hasPriority || dateLabel || (isDone && task.completedAt) || (labels && labels.length > 0) || project) && (
             <View className="flex-row items-center gap-2 flex-wrap mt-1">
+              {project && (
+                <Pressable onPress={handleProjectPress} className="flex-row items-center gap-1 active:opacity-70">
+                  <View
+                    className="w-2 h-2 rounded-full"
+                    style={{ backgroundColor: project.color }}
+                  />
+                  <Text
+                    variant="caption"
+                    className="text-xs"
+                    style={{ color: project.color }}
+                    numberOfLines={1}
+                  >
+                    {project.name}
+                  </Text>
+                </Pressable>
+              )}
               {isDone && task.completedAt && (
                 <View className="flex-row items-center gap-1">
                   <Icon name="checkmark-circle" size={14} color={colors.mutedForeground} />

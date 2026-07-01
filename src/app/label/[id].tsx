@@ -12,7 +12,7 @@ import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
 import { Button } from '@/components/ui/button';
 import { TaskRow } from '@/components/tasks/TaskRow';
-import type { TaskDTO } from '@/repositories/tasks.repo';
+import type { TaskWithProject } from '@/repositories/tasks.repo';
 
 export default function LabelDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -45,7 +45,12 @@ export default function LabelDetailScreen() {
     }
   };
 
-  const renderTask = ({ item }: { item: TaskDTO }) => <TaskRow task={item} />;
+  const renderTask = ({ item }: { item: TaskWithProject }) => {
+    const project = item.projectName
+      ? { name: item.projectName, color: item.projectColor!, icon: item.projectIcon! }
+      : null;
+    return <TaskRow task={item} project={project} />;
+  };
 
   const renderEmpty = () => (
     <View className="flex-1 items-center justify-center p-10 gap-3">

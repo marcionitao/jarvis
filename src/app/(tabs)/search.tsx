@@ -7,7 +7,7 @@ import { TaskRow } from '@/components/tasks/TaskRow';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { useTasksSearch } from '@/hooks';
-import type { TaskDTO } from '@/repositories/tasks.repo';
+import type { TaskWithProject } from '@/repositories/tasks.repo';
 import { useI18n } from '@/state/i18n.context';
 import { useTheme } from '@/state/theme.store';
 import { ActivityIndicator, FlatList, View } from 'react-native';
@@ -31,7 +31,12 @@ export default function SearchScreen() {
     filters.labelId !== undefined ||
     filters.status !== 'all'
 
-  const renderTask = ({ item }: { item: TaskDTO }) => <TaskRow task={item} />;
+  const renderTask = ({ item }: { item: TaskWithProject }) => {
+    const project = item.projectName
+      ? { name: item.projectName, color: item.projectColor!, icon: item.projectIcon! }
+      : null;
+    return <TaskRow task={item} project={project} />;
+  };
 
   const renderEmpty = () => (
     <View className="flex-1 items-center justify-center p-10">

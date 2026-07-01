@@ -3,18 +3,18 @@
 
 import { useCallback } from 'react';
 import * as tasksRepo from '@/repositories/tasks.repo';
-import type { TaskDTO } from '@/repositories/tasks.repo';
+import type { TaskWithProject } from '@/repositories/tasks.repo';
 import { useQuery } from './use-query';
 
 export function useTasksForLabel(
   labelId: string | null,
   includeCompleted: boolean = false
-): { data: TaskDTO[]; loading: boolean; error: Error | null; refresh: () => void } {
+): { data: TaskWithProject[]; loading: boolean; error: Error | null; refresh: () => void } {
   const fetcher = useCallback(
     (db: Parameters<typeof tasksRepo.listByLabel>[0]) =>
       labelId ? tasksRepo.listByLabel(db, labelId, includeCompleted) : Promise.resolve([]),
     [labelId, includeCompleted]
   );
 
-  return useQuery<TaskDTO[]>(fetcher, ['tasks:changed'], labelId);
+  return useQuery<TaskWithProject[]>(fetcher, ['tasks:changed'], labelId);
 }

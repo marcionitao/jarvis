@@ -20,7 +20,7 @@ import { useI18n } from '@/state/i18n.context';
 import { useUIPrefs } from '@/state/ui-prefs.context';
 import type { ComponentProps } from 'react';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import type { TaskDTO } from '@/repositories/tasks.repo';
+import type { TaskWithProject } from '@/repositories/tasks.repo';
 
 export default function ProjectDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -36,18 +36,23 @@ export default function ProjectDetailScreen() {
   const [menuVisible, setMenuVisible] = useState(false);
   const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
 
-  const filteredTasks: TaskDTO[] = (tasks ?? []).filter(
-    (task: TaskDTO) => showCompleted || task.status === 'todo'
+  const filteredTasks: TaskWithProject[] = (tasks ?? []).filter(
+    (task: TaskWithProject) => showCompleted || task.status === 'todo'
   );
-  const todoCount = (tasks ?? []).filter((t: TaskDTO) => t.status === 'todo').length;
-  const doneCount = (tasks ?? []).filter((t: TaskDTO) => t.status === 'done').length;
+  const todoCount = (tasks ?? []).filter((t: TaskWithProject) => t.status === 'todo').length;
+  const doneCount = (tasks ?? []).filter((t: TaskWithProject) => t.status === 'done').length;
   const isArchived = project?.archivedAt != null;
 
   const isLoading = projectLoading || tasksLoading;
   const isEmpty = !isLoading && !project;
   const hasTasks = !isLoading && filteredTasks.length === 0 && (tasks?.length ?? 0) > 0;
 
-  const renderItem: ListRenderItem<TaskDTO> = ({ item }) => <TaskRow task={item} />;
+  const renderItem: ListRenderItem<TaskWithProject> = ({ item }) => {
+    const project = item.projectName
+      ? { name: item.projectName, color: item.projectColor!, icon: item.projectIcon! }
+      : null;
+    return <TaskRow task={item} project={project} />;
+  };
 
   const handleArchiveOrRestore = async () => {
     setMenuVisible(false);

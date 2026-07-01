@@ -765,6 +765,7 @@ Implementar a tela de Definições acessível do header de "Hoje" com:
 | 2.2 | Definições (tema + idioma) | ✅ Concluída |
 | 2.4 | Notificações (toggle + scheduling) | ✅ Concluída |
 | 2.5 | Shopping List (checklist) + 4 bugfixes | ✅ Concluída |
+| 2.7 | Project Indicator in Tasks (badge visual) | ✅ Concluída |
 
 ## 26.1 — Bug Fix: Delete não funcionava na Shopping List (CONCLUÍDO ✅)
 
@@ -916,34 +917,85 @@ A Shopping List está agora 100% funcional com todos os bugs resolvidos:
 
 ---
 
-## 2.7 — Project Indicator in Tasks (Pendente)
+## 2.7 — Project Indicator in Tasks (CONCLUÍDA ✅)
 
 ### Objetivo
 Mostrar indicador visual nas tarefas que pertencem a um projeto (não órfãs) em todas as listas (Hoje, Pesquisa, Agenda, Projetos, Etiquetas). Badge com cor/ícone do projeto ao lado do título.
 
-### Implementação (4 fases)
+### Implementação (4 fases — TODAS CONCLUÍDAS ✅)
 
 | Fase | Entregável | Esforço | Estado |
 |------|------------|---------|--------|
-| 1. Repo | JOIN com `projects` em `searchWithFilters`, `listByProject`, `listToday`, `listUpcoming`, `listByLabel` → retornar `projectName, projectColor, projectIcon` | ~0.5 dia | ⏳ Pendente |
-| 2. Tipos + Hooks | Interface `TaskWithProject` + atualizar `useTodayTasks`, `useProjectTasks`, `useTasksSearch`, `useTasksForLabel`, etc. | ~0.25 dia | ⏳ Pendente |
-| 3. TaskRow | Prop `project?: { name, color, icon }` + badge visual (círculo colorido + tooltip com nome) | ~0.5 dia | ⏳ Pendente |
-| 4. Integração + Testes | Passar `project` do hook → `TaskRow` em Search, Hoje, Projetos, Agenda, Label Detail + i18n + testes | ~0.25 dia | ⏳ Pendente |
+| 1. Repo | JOIN com `projects` → `projectName, projectColor, projectIcon` | ~0.5 dia | ✅ Concluída |
+| 2. Tipos + Hooks | `TaskWithProject` + actualização de todos os hooks | ~0.25 dia | ✅ Concluída |
+| 3. TaskRow | Badge visual (círculo colorido + nome do projeto) | ~0.5 dia | ✅ Concluída |
+| 4. Integração | Ecrãs actualizados + validação | ~0.25 dia | ✅ Concluída |
 
-**Total: ~1.5 dias**
+**Total: ~1.5 dias | TODAS CONCLUÍDAS ✅**
 
-### Pontos críticos
-- **Performance:** JOIN único no repo (evita N+1 queries)
-- **Null safety:** `projectId` pode ser null (Inbox) → sem badge
-- **Reutilização:** `TaskRow` usado em 5+ telas — todas beneficiam
-- **Projetos arquivados:** Considerar se mostrar badge para projetos arquivados
+### Fase 1 — Detalhes da implementação
+**Ficheiros modificados:**
+- `src/repositories/tasks.repo.ts` — novo tipo `TaskWithProject` + JOINs em todas as funções de listagem
 
-### Benefício UX
+**Nova interface:**
+```ts
+export interface TaskWithProject extends TaskDTO {
+  projectName: string | null;
+  projectColor: string | null;
+  projectIcon: string | null;
+}
 ```
-☐ Comprar leite              ● Trabalho  (cor do projeto)
-☐ Revisar PR                 ● Pessoal   
-☐ Tarefa órfã/Inbox          (sem badge)
+
+**Funções alteradas (todas retornam `TaskWithProject[]` em vez de `TaskDTO[]`):**
+- `searchWithFilters()` — LEFT JOIN com projects
+- `listByProject()` — LEFT JOIN com projects
+- `listToday()` — LEFT JOIN com projects
+- `listUpcoming()` — LEFT JOIN com projects
+- `listByDate()` — LEFT JOIN com projects
+- `listByLabel()` — LEFT JOIN com projects
+
+### Fase 2 — Detalhes da implementação
+**Ficheiros modificados (5):**
+- `src/hooks/use-tasks.ts` — `useTodayTasks`, `useUpcomingTasks`, `useProjectTasks` agora retornam `TaskWithProject[]`
+- `src/hooks/use-tasks-for-date.ts` — `useTasksForDate` agora retorna `TaskWithProject[]`
+- `src/hooks/use-tasks-for-label.ts` — `useTasksForLabel` agora retorna `TaskWithProject[]`
+- `src/hooks/use-tasks-for-month.ts` — `useTasksForMonth` agora retorna `TaskWithProject[]`
+- `src/hooks/use-tasks-search.ts` — `useTasksSearch` agora retorna `TaskWithProject[]`
+
+**Nota:** `useTask(id)` continua a retornar `TaskDTO | null` (single task, sem JOIN necessário)
+
+### Fase 3 — Detalhes da implementação
+**TaskRow actualizado com badge de projeto:**
+
+**Nova interface:**
+```ts
+export interface TaskProjectInfo {
+  name: string;
+  color: string;
+  icon: string;
+}
+
+export interface TaskRowProps {
+  task: TaskDTO;
+  project?: TaskProjectInfo | null;
+}
 ```
+
+**Ecrãs actualizados (4):**
+- `src/app/(tabs)/search.tsx` — `<TaskRow task={item} project={project} />`
+- `src/app/(tabs)/index.tsx` (Hoje) — `<TaskRow task={item} project={project} />`
+- `src/app/label/[id].tsx` — `<TaskRow task={item} project={project} />`
+- `src/app/project/[id].tsx` — `<TaskRow task={item} project={project} />`
+
+**Design do badge:**
+- Círculo colorido (8px) com ícone do projeto dentro, posicionado entre o checkbox e o título
+- Na metadata row: pequeno círculo colorido + nome do projeto como texto (`text-xs`)
+- Tap no badge/nome mostra Alert com nome do projeto
+- Tarefas sem projeto (Inbox) não mostram badge
+
+### Validação
+- `npm test`: **129/129 testes** ✅
+- `npm run lint`: **0 erros** (21 warnings)
 
 ---
 
@@ -1067,6 +1119,28 @@ Alternativas:
 - **Recurring Tasks** 🔴 Alta — tarefas que se repetem (diário, semanal, mensal)
 - **Subtasks/Checklists** 🔴 Alta — sub-tarefas dentro de uma tarefa
 - Resolve o Splash full-screen Android com edição nativa directa (pós-prebuild, sem Config Plugin)
+
+---
+
+## 2.7.1 — Agenda: Usar TaskRow no Modal (Planeado)
+
+### Objetivo
+Substituir a renderização customizada do modal da Agenda por `TaskRow` para herdar automaticamente:
+- Badge de projeto (círculo colorido + ícone + nome)
+- Toggle complete funcional
+- Prioridade, data/hora, labels consistentes
+
+### Plano (1 fase única — ~25 min)
+
+| Passo | Descrição |
+|-------|-----------|
+| 1 | Importar `TaskRow` + `TaskWithProject` |
+| 2 | No modal do dia, substituir `.map()` customizado por `<TaskRow />` |
+| 3 | Construir `project` prop a partir de `task.projectName/Color/Icon` |
+| 4 | Ajustar espaçamento do modal se necessário |
+| 5 | Testar: toggle complete, badge projeto, prioridade, data, labels |
+
+**Validação automática:** `useTasksForDate` já subscreve `tasks:changed` → toggle no modal atualiza lista sem código extra.
 
 ---
 

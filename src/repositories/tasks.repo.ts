@@ -53,47 +53,74 @@ export async function getById(db: JarvisDB, id: string): Promise<TaskDTO | null>
 export async function listByProject(
   db: JarvisDB,
   projectId: string | null
-): Promise<TaskDTO[]> {
+): Promise<TaskWithProject[]> {
   if (projectId === null) {
-    return db
-      .select()
+    const result = await db
+      .select({
+        ...tasks,
+        projectName: projects.name,
+        projectColor: projects.color,
+        projectIcon: projects.icon,
+      })
       .from(tasks)
+      .leftJoin(projects, eq(tasks.projectId, projects.id))
       .where(isNull(tasks.projectId))
       .orderBy(asc(tasks.order));
+    return result;
   }
-  return db
-    .select()
+  const result = await db
+    .select({
+      ...tasks,
+      projectName: projects.name,
+      projectColor: projects.color,
+      projectIcon: projects.icon,
+    })
     .from(tasks)
+    .leftJoin(projects, eq(tasks.projectId, projects.id))
     .where(eq(tasks.projectId, projectId))
     .orderBy(asc(tasks.order));
+  return result;
 }
 
 export async function listToday(
   db: JarvisDB,
   today: Date = new Date(),
   includeCompleted: boolean = false
-): Promise<TaskDTO[]> {
+): Promise<TaskWithProject[]> {
   const dayKey = startOfDayKey(today);
   const statusFilter = includeCompleted
     ? or(eq(tasks.status, 'todo'), eq(tasks.status, 'done'))
     : eq(tasks.status, 'todo');
-  return db
-    .select()
+  const result = await db
+    .select({
+      ...tasks,
+      projectName: projects.name,
+      projectColor: projects.color,
+      projectIcon: projects.icon,
+    })
     .from(tasks)
+    .leftJoin(projects, eq(tasks.projectId, projects.id))
     .where(and(statusFilter, or(eq(tasks.dueDate, dayKey), lte(tasks.dueDate, dayKey))))
     .orderBy(asc(tasks.dueDate), asc(tasks.order));
+  return result;
 }
 
 export async function listUpcoming(
   db: JarvisDB,
   from: Date = new Date(),
   days: number = 7
-): Promise<TaskDTO[]> {
+): Promise<TaskWithProject[]> {
   const fromKey = startOfDayKey(from);
   const toKey = endOfDayKey(new Date(from.getTime() + days * 86400000));
-  return db
-    .select()
+  const result = await db
+    .select({
+      ...tasks,
+      projectName: projects.name,
+      projectColor: projects.color,
+      projectIcon: projects.icon,
+    })
     .from(tasks)
+    .leftJoin(projects, eq(tasks.projectId, projects.id))
     .where(
       and(
         eq(tasks.status, 'todo'),
@@ -102,16 +129,23 @@ export async function listUpcoming(
       )
     )
     .orderBy(asc(tasks.dueDate), asc(tasks.order));
+  return result;
 }
 
 export async function listByDate(
   db: JarvisDB,
   date: Date
-): Promise<TaskDTO[]> {
+): Promise<TaskWithProject[]> {
   const dayKey = toDateKey(date);
-  return db
-    .select()
+  const result = await db
+    .select({
+      ...tasks,
+      projectName: projects.name,
+      projectColor: projects.color,
+      projectIcon: projects.icon,
+    })
     .from(tasks)
+    .leftJoin(projects, eq(tasks.projectId, projects.id))
     .where(
       and(
         eq(tasks.status, 'todo'),
@@ -119,6 +153,7 @@ export async function listByDate(
       )
     )
     .orderBy(asc(tasks.order));
+  return result;
 }
 
 export interface CreateTaskInput {
@@ -300,8 +335,14 @@ export async function searchWithFilters(
   )`;
   const finalWhere = where ? and(where, shoppingExclude) : shoppingExclude;
   return db
-    .select()
+    .select({
+      ...tasks,
+      projectName: projects.name,
+      projectColor: projects.color,
+      projectIcon: projects.icon,
+    })
     .from(tasks)
+    .leftJoin(projects, eq(tasks.projectId, projects.id))
     .where(finalWhere)
     .orderBy(desc(tasks.clientUpdatedAt))
     .limit(100);
@@ -311,7 +352,7 @@ export async function listByLabel(
   db: JarvisDB,
   labelId: string,
   includeCompleted: boolean = false
-): Promise<TaskDTO[]> {
+): Promise<TaskWithProject[]> {
   const labelTasks = await db
     .select({ taskId: taskLabels.taskId })
     .from(taskLabels)
@@ -326,11 +367,18 @@ export async function listByLabel(
     conditions.push(eq(tasks.status, 'todo'));
   }
 
-  return db
-    .select()
+  const result = await db
+    .select({
+      ...tasks,
+      projectName: projects.name,
+      projectColor: projects.color,
+      projectIcon: projects.icon,
+    })
     .from(tasks)
+    .leftJoin(projects, eq(tasks.projectId, projects.id))
     .where(and(...conditions))
     .orderBy(asc(tasks.dueDate), asc(tasks.order));
+  return result;
 }
 
 export interface ShoppingSection {

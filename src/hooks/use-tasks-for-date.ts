@@ -3,17 +3,17 @@
 
 import { useCallback } from 'react';
 import * as tasksRepo from '@/repositories/tasks.repo';
-import type { TaskDTO } from '@/repositories/tasks.repo';
-import { useQuery } from './use-query';
+import type { TaskWithProject } from '@/repositories/tasks.repo';
+import { useQuery, type QueryState } from './use-query';
 
-export function useTasksForDate(date: Date): QueryState<TaskDTO[]> {
+export function useTasksForDate(date: Date): QueryState<TaskWithProject[]> {
   const dateKey = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
-  
+
   const fetcher = useCallback(
     (db: Parameters<typeof tasksRepo.listByDate>[0]) =>
       tasksRepo.listByDate(db, date),
     [dateKey]
   );
-  
-  return useQuery<TaskDTO[]>(fetcher, ['tasks:changed'], dateKey);
+
+  return useQuery<TaskWithProject[]>(fetcher, ['tasks:changed'], dateKey);
 }
