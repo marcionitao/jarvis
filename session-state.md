@@ -1122,25 +1122,17 @@ Alternativas:
 
 ---
 
-## 2.7.1 — Agenda: Usar TaskRow no Modal (Planeado)
+## 2.7.1 — Agenda: TaskRow na Lista do Mês ✅
 
 ### Objetivo
-Substituir a renderização customizada do modal da Agenda por `TaskRow` para herdar automaticamente:
+Substituir a renderização customizada da **lista de tarefas do mês** (abaixo do calendário) por `TaskRow` para herdar automaticamente:
 - Badge de projeto (círculo colorido + ícone + nome)
 - Toggle complete funcional
 - Prioridade, data/hora, labels consistentes
 
-### Plano (1 fase única — ~25 min)
-
-| Passo | Descrição |
-|-------|-----------|
-| 1 | Importar `TaskRow` + `TaskWithProject` |
-| 2 | No modal do dia, substituir `.map()` customizado por `<TaskRow />` |
-| 3 | Construir `project` prop a partir de `task.projectName/Color/Icon` |
-| 4 | Ajustar espaçamento do modal se necessário |
-| 5 | Testar: toggle complete, badge projeto, prioridade, data, labels |
-
-**Validação automática:** `useTasksForDate` já subscreve `tasks:changed` → toggle no modal atualiza lista sem código extra.
+### Implementação (1 fase — concluída)
+- `src/app/(tabs)/agenda.tsx`: imports `TaskRow` + `TaskProjectInfo`; lista do mês (linhas 172-199) substituída por `<TaskRow />` com `project` prop construída de `task.projectName/Color/Icon`
+- Lint: 0 erros ✅
 
 ---
 

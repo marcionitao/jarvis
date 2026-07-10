@@ -3,6 +3,8 @@
 
 import { Icon } from '@/components/ui/icon';
 import { Text as RNText } from '@/components/ui/text';
+import { TaskRow } from '@/components/tasks/TaskRow';
+import type { TaskProjectInfo } from '@/components/tasks/TaskRow';
 import { useTasksForDate } from '@/hooks/use-tasks-for-date';
 import { useTasksForMonth } from '@/hooks/use-tasks-for-month';
 import { useI18n } from '@/state/i18n.context';
@@ -167,34 +169,12 @@ export default function AgendaScreen() {
                         return `${d}/${m}`;
                       })()}
                     </RNText>
-                    {tasks.map((task: typeof tasksForMonth[0]) => (
-                      <View key={task.id} className="p-3 bg-white rounded-lg border border-gray-200 flex-row items-center justify-between gap-3">
-                        <View className="flex-1 min-w-0">
-                          <RNText variant="body" className="font-medium truncate">{task.title}</RNText>
-                          <View className="flex-row items-center gap-2 mt-1">
-                            {task.priority > 0 && (
-                              <View className="h-2 w-2 bg-primary-500 rounded-full" />
-                            )}
-                            {task.projectName && (
-                              <RNText variant="caption" className="text-muted-foreground">
-                                #{task.projectName}
-                              </RNText>
-                            )}
-                          </View>
-                        </View>
-                        {task.dueTime !== null && (
-                          <View className="text-right flex-shrink-0">
-                            <RNText variant="caption" className="text-muted-foreground">
-                              {(() => {
-                                const h = Math.floor(task.dueTime! / 60);
-                                const m = task.dueTime! % 60;
-                                return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-                              })()}
-                            </RNText>
-                          </View>
-                        )}
-                      </View>
-                    ))}
+{tasks.map((task) => {
+                        const project: TaskProjectInfo | null = task.projectName
+                          ? { name: task.projectName, color: task.projectColor ?? '#888', icon: task.projectIcon ?? 'folder' }
+                          : null;
+                        return <TaskRow key={task.id} task={task} project={project} />;
+                      })}
                   </View>
                 ));
               })()}
@@ -229,37 +209,13 @@ export default function AgendaScreen() {
                     {t('agenda.noTasksForDate')}
                   </RNText>
                 ) : (
-                  <View className="space-y-3">
-                    {tasksForDate.map((task: typeof tasksForDate[0]) => (
-                      <View key={task.id} className="p-3 bg-gray-50 rounded-lg">
-                        <View className="flex-row items-start justify-between">
-                          <View className="flex-1">
-                            <RNText variant="body" className="font-medium">{task.title}</RNText>
-                            <View className="flex-row items-center gap-2 mt-1">
-                              {task.priority > 0 && (
-                                <View className="h-2 w-2 bg-primary-500 rounded-full" />
-                              )}
-                              {task.projectName && (
-                                <RNText variant="caption" className="text-muted-foreground">
-                                  #{task.projectName}
-                                </RNText>
-                              )}
-                            </View>
-                          </View>
-                          {task.dueTime !== null && (
-                            <View className="text-right">
-                              <RNText variant="caption" className="text-muted-foreground">
-                                {(() => {
-                                  const h = Math.floor(task.dueTime! / 60);
-                                  const m = task.dueTime! % 60;
-                                  return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-                                })()}
-                              </RNText>
-                            </View>
-                          )}
-                        </View>
-                      </View>
-                    ))}
+                  <View className="space-y-2">
+                    {tasksForDate.map((task) => {
+                      const project: TaskProjectInfo | null = task.projectName
+                        ? { name: task.projectName, color: task.projectColor ?? '#888', icon: task.projectIcon ?? 'folder' }
+                        : null;
+                      return <TaskRow key={task.id} task={task} project={project} />;
+                    })}
                   </View>
                 )}
               </View>
